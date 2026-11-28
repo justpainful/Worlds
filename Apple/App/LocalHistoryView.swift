@@ -61,6 +61,7 @@ struct LocalHistoryView: View {
                 }
             }
             .navigationTitle("Page history")
+            .worldsSheetGlass()
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
             .task {
                 do {

@@ -104,7 +104,6 @@ struct AssistantHostView: View {
     private var assistantContent: some View {
         VStack(spacing: 0) {
             headerBanner
-            Divider()
             #if WORLDS_MAIN_APP_MODULES
             if setup.checked && !setup.ready {
                 setupCard
@@ -129,18 +128,16 @@ struct AssistantHostView: View {
             }
             #endif
         }
-        .background(WorldsPalette.groupedCanvas(for: colorScheme))
+        // The conversation is content: one calm surface, the panel colour the Windows app uses.
+        .background(WorldsPalette.panel(for: colorScheme))
         .navigationTitle("AI Assistant")
     }
 
     private var headerBanner: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 10) {
-                Image(systemName: "sparkles")
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(WorldsPalette.accent(for: colorScheme))
-                    .frame(width: 34, height: 34)
-                    .background(WorldsPalette.accent(for: colorScheme).opacity(0.14), in: RoundedRectangle(cornerRadius: 10))
+                // A quiet intelligence tile: the accent blended toward purple, no glow band.
+                WorldsIconTile("sparkles", colors: [WorldsPalette.accent(for: colorScheme), Color.purple.opacity(0.85)], size: 32)
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 6) {
                         Text("Worlds Intelligence")
@@ -167,17 +164,18 @@ struct AssistantHostView: View {
                     Label("AI settings", systemImage: "slider.horizontal.3")
                         .labelStyle(.iconOnly)
                         .font(.body.weight(.medium))
-                        .frame(width: 30, height: 30)
+                        .frame(width: 22, height: 22)
                 }
-                .buttonStyle(.borderless)
+                .worldsGlassButton()
+                .buttonBorderShape(.circle)
                 .help(Text("AI settings"))
                 .accessibilityIdentifier("open-ai-settings-button")
                 #endif
             }
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(.ultraThinMaterial)
+        .padding(.top, 12)
+        .padding(.bottom, 8)
     }
 
     #if WORLDS_MAIN_APP_MODULES
@@ -238,7 +236,7 @@ struct AssistantHostView: View {
             } label: {
                 Label("Go to AI settings", systemImage: "slider.horizontal.3")
             }
-            .buttonStyle(.borderedProminent)
+            .worldsGlassButton(prominent: true)
             .accessibilityIdentifier("assistant-open-ai-settings")
         }
         .frame(maxWidth: 760, alignment: .leading)

@@ -141,7 +141,8 @@ private struct HTMLPageWebView: PlatformViewRepresentable {
         view.setValue(false, forKey: "drawsBackground")
         #else
         view.isOpaque = false
-        view.backgroundColor = UIColor(red: 0x1C / 255, green: 0x1C / 255, blue: 0x1E / 255, alpha: 1)
+        // The dark surface role (#1C1C1E) the Windows app gives HTML pages.
+        view.backgroundColor = UIColor(WorldsPalette.surfaceDeep)
         view.scrollView.backgroundColor = view.backgroundColor
         let tap = UITapGestureRecognizer(target: coordinator, action: #selector(Coordinator.tapped))
         tap.cancelsTouchesInView = false

@@ -105,6 +105,7 @@ struct LocalMovePageView: View {
             }
             .disabled(busy || uncertain)
             .navigationTitle("Move page")
+            .worldsSheetGlass()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") { if dirty { confirmDiscard = true } else { dismiss() } }.disabled(busy)

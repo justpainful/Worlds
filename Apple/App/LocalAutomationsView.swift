@@ -23,11 +23,14 @@ struct LocalAutomationsView: View {
                     Section("Automations") {
                         if snapshot.automations.isEmpty { Text("No personal automations in this copy.") }
                         ForEach(snapshot.automations) { automation in
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(automation.name).font(.headline)
-                                Text(automation.enabled ? "Enabled in this copy" : "Paused").foregroundStyle(.secondary)
-                                if let next = automation.nextRunAt { Text("Next scheduled: \(date(next))").foregroundStyle(.secondary) }
-                            }.accessibilityIdentifier("automation.\(automation.id)")
+                            HStack(alignment: .top, spacing: 12) {
+                                WorldsIconTile(automation.enabled ? "bolt.fill" : "pause.fill", color: automation.enabled ? .orange : .gray, size: 28)
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(automation.name).font(.headline)
+                                    Text(automation.enabled ? "Enabled in this copy" : "Paused").foregroundStyle(.secondary)
+                                    if let next = automation.nextRunAt { Text("Next scheduled: \(date(next))").foregroundStyle(.secondary) }
+                                }.accessibilityIdentifier("automation.\(automation.id)")
+                            }
                         }
                     }
                     Section("Pending requests") {
@@ -37,6 +40,7 @@ struct LocalAutomationsView: View {
                                 Text(name(approval.automationID, in: snapshot))
                                 Text("Discord delivery is unavailable. You can decline this request in the local copy.").foregroundStyle(.secondary)
                                 Button("Decline request", role: .destructive) { selectedApproval = approval }
+                                    .worldsGlassButton()
                                     .disabled(model.loading).accessibilityIdentifier("decline-automation.\(approval.id)")
                             }
                         }
@@ -54,6 +58,7 @@ struct LocalAutomationsView: View {
                 }
             }
             .navigationTitle("Automations")
+            .worldsSheetGlass()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() }.disabled(model.loading) }
                 ToolbarItem(placement: .primaryAction) { Button("Refresh", systemImage: "arrow.clockwise") { Task { await model.refresh() } }.disabled(model.loading) }

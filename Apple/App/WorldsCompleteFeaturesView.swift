@@ -47,7 +47,7 @@ struct NativeFocusTimerBar: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
-        .worldsGlass(cornerRadius: 12)
+        .worldsFloatingGlass(in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(alignment: .bottom) {
             if readingRulerEnabled {
                 Rectangle()
@@ -67,9 +67,8 @@ struct NativeFocusTimerBar: View {
         }
         .lineLimit(1)
         .fixedSize(horizontal: true, vertical: false)
-        .padding(.horizontal, 10)
+        .padding(.horizontal, 6)
         .padding(.vertical, 6)
-        .background(WorldsPalette.accent(for: colorScheme).opacity(0.16), in: Capsule())
     }
 
     private var modePicker: some View {
@@ -98,8 +97,7 @@ struct NativeFocusTimerBar: View {
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
         }
-        .buttonStyle(.borderedProminent)
-        .tint(WorldsPalette.accent(for: colorScheme))
+        .worldsGlassButton(prominent: true)
         .fixedSize(horizontal: true, vertical: false)
         .accessibilityIdentifier("focus-timer-toggle")
     }
@@ -118,10 +116,11 @@ struct NativeFocusTimerBar: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
             .background(
-                readingRulerEnabled ? Color.cyan.opacity(0.22) : Color.secondary.opacity(0.14),
+                readingRulerEnabled ? WorldsPalette.lens(for: colorScheme) : Color.clear,
                 in: Capsule()
             )
-            .foregroundStyle(readingRulerEnabled ? Color.cyan : .secondary)
+            .foregroundStyle(readingRulerEnabled ? Color.primary : Color.secondary)
+            .animation(WorldsMotion.selection, value: readingRulerEnabled)
         }
         .buttonStyle(.plain)
         .fixedSize(horizontal: true, vertical: false)
@@ -196,7 +195,7 @@ struct WorldsSpreadsheetStudioView: View {
             .frame(maxWidth: 1120, alignment: .leading)
             .frame(maxWidth: .infinity)
         }
-        .background(WorldsPalette.paper(for: colorScheme))
+        .worldsDestinationCanvas()
         .accessibilityIdentifier("spreadsheet-studio-view")
         .sheet(isPresented: $showShortcutsSheet) {
             spreadsheetShortcutsModal
@@ -237,31 +236,33 @@ struct WorldsSpreadsheetStudioView: View {
     }
 
     private var sheetActionButtons: some View {
-        HStack(spacing: 8) {
-            Menu {
-                Button("Financial Budget & Cashflow") { loadTemplate("budget") }
-                Button("Company KPI & OKR Tracker") { loadTemplate("kpi") }
-                Button("Academic Gradebook & GPA") { loadTemplate("gpa") }
-            } label: {
-                Label("Templates", systemImage: "sparkles.rectangle.stack")
-                    .font(.caption.weight(.semibold))
-                    .lineLimit(1)
-                    .fixedSize(horizontal: true, vertical: false)
-            }
-            .buttonStyle(.bordered)
-            .fixedSize(horizontal: true, vertical: false)
+        WorldsGlassChromeGroup(spacing: 8) {
+            HStack(spacing: 8) {
+                Menu {
+                    Button("Financial Budget & Cashflow") { loadTemplate("budget") }
+                    Button("Company KPI & OKR Tracker") { loadTemplate("kpi") }
+                    Button("Academic Gradebook & GPA") { loadTemplate("gpa") }
+                } label: {
+                    Label("Templates", systemImage: "sparkles.rectangle.stack")
+                        .font(.caption.weight(.semibold))
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
+                }
+                .worldsGlassButton()
+                .fixedSize(horizontal: true, vertical: false)
 
-            Button {
-                showShortcutsSheet = true
-            } label: {
-                Label("Shortcuts (F1)", systemImage: "keyboard")
-                    .font(.caption.weight(.semibold))
-                    .lineLimit(1)
-                    .fixedSize(horizontal: true, vertical: false)
+                Button {
+                    showShortcutsSheet = true
+                } label: {
+                    Label("Shortcuts (F1)", systemImage: "keyboard")
+                        .font(.caption.weight(.semibold))
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
+                }
+                .worldsGlassButton()
+                .fixedSize(horizontal: true, vertical: false)
+                .accessibilityIdentifier("spreadsheet-shortcuts-button")
             }
-            .buttonStyle(.bordered)
-            .fixedSize(horizontal: true, vertical: false)
-            .accessibilityIdentifier("spreadsheet-shortcuts-button")
         }
     }
 
@@ -269,28 +270,14 @@ struct WorldsSpreadsheetStudioView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 6) {
-                        ForEach(["Home", "Formulas", "Data & Filter", "View & Freeze"], id: \.self) { tab in
-                            Button {
-                                activeRibbonTab = tab
-                            } label: {
-                                Text(tab)
-                                    .font(.caption.weight(.semibold))
-                                    .lineLimit(1)
-                                    .fixedSize(horizontal: true, vertical: false)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 6)
-                                    .background(
-                                        activeRibbonTab == tab
-                                            ? WorldsPalette.accent(for: colorScheme).opacity(0.22)
-                                            : Color.clear,
-                                        in: Capsule()
-                                    )
-                                    .foregroundStyle(activeRibbonTab == tab ? WorldsPalette.accent(for: colorScheme) : .secondary)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
+                    WorldsGlassFilterBar(
+                        selection: $activeRibbonTab,
+                        options: ["Home", "Formulas", "Data & Filter", "View & Freeze"],
+                        title: { $0 },
+                        symbol: { _ in nil },
+                        identifier: { "spreadsheet-ribbon-\($0)" }
+                    )
+                    .padding(.vertical, 2)
                 }
                 Text("Auto-Saved · Rev 4")
                     .font(.caption2.monospaced())
@@ -300,24 +287,27 @@ struct WorldsSpreadsheetStudioView: View {
             }
 
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ribbonChip(icon: "bold", label: "Bold ⌘B")
-                    ribbonChip(icon: "italic", label: "Italic ⌘I")
-                    ribbonChip(icon: "dollarsign.circle", label: "Currency $")
-                    ribbonChip(icon: "percent", label: "Percent %")
-                    Divider().frame(height: 18)
-                    ribbonChip(icon: "arrow.up.arrow.down", label: "Sort A→Z") {
-                        sortRowsAscending()
+                WorldsGlassChromeGroup(spacing: 8) {
+                    HStack(spacing: 8) {
+                        ribbonChip(icon: "bold", label: "Bold ⌘B")
+                        ribbonChip(icon: "italic", label: "Italic ⌘I")
+                        ribbonChip(icon: "dollarsign.circle", label: "Currency $")
+                        ribbonChip(icon: "percent", label: "Percent %")
+                        Divider().frame(height: 18)
+                        ribbonChip(icon: "arrow.up.arrow.down", label: "Sort A→Z") {
+                            sortRowsAscending()
+                        }
+                        ribbonChip(icon: "line.3.horizontal.decrease.circle", label: autoFilterEnabled ? "Filter: ON" : "Filter: OFF") {
+                            autoFilterEnabled.toggle()
+                        }
+                        ribbonChip(icon: "pin.fill", label: freezeHeader ? "Frozen Row 1" : "Freeze Panes") {
+                            freezeHeader.toggle()
+                        }
+                        Divider().frame(height: 18)
+                        ribbonChip(icon: "plus.rectangle.on.rectangle", label: "+ Insert Row")
+                        ribbonChip(icon: "square.and.arrow.up", label: "Export .XLSX")
                     }
-                    ribbonChip(icon: "line.3.horizontal.decrease.circle", label: autoFilterEnabled ? "Filter: ON" : "Filter: OFF") {
-                        autoFilterEnabled.toggle()
-                    }
-                    ribbonChip(icon: "pin.fill", label: freezeHeader ? "Frozen Row 1" : "Freeze Panes") {
-                        freezeHeader.toggle()
-                    }
-                    Divider().frame(height: 18)
-                    ribbonChip(icon: "plus.rectangle.on.rectangle", label: "+ Insert Row")
-                    ribbonChip(icon: "square.and.arrow.up", label: "Export .XLSX")
+                    .padding(.vertical, 2)
                 }
             }
         }
@@ -333,10 +323,10 @@ struct WorldsSpreadsheetStudioView: View {
                 Text(label)
                     .font(.caption.weight(.medium))
             }
-            .padding(.horizontal, 10)
+            .padding(.horizontal, 11)
             .padding(.vertical, 6)
-            .background(Color.secondary.opacity(0.12), in: RoundedRectangle(cornerRadius: 7))
             .foregroundStyle(WorldsPalette.ink(for: colorScheme))
+            .worldsGlassCapsule()
         }
         .buttonStyle(.plain)
     }
@@ -367,8 +357,7 @@ struct WorldsSpreadsheetStudioView: View {
             Button("Apply") {
                 cellData[selectedCell] = formulaInput
             }
-            .buttonStyle(.borderedProminent)
-            .tint(.green)
+            .worldsGlassButton(prominent: true)
         }
         .padding(10)
         .worldsGlass(cornerRadius: 10)
@@ -386,11 +375,11 @@ struct WorldsSpreadsheetStudioView: View {
                         cellData[selectedCell] = fn
                     } label: {
                         Text(fn)
-                            .font(.caption2.monospaced())
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(Color.green.opacity(0.12), in: Capsule())
-                            .foregroundStyle(.green)
+                            .font(.caption.monospaced())
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .foregroundStyle(WorldsPalette.ink(for: colorScheme))
+                            .worldsGlassCapsule()
                     }
                     .buttonStyle(.plain)
                 }
@@ -757,12 +746,14 @@ struct VisualMindMapCanvasPreview: View {
             }
 
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    presetTab(id: "radial", title: "Radial Mind Map · شعاعية", icon: "brain.head.profile", color: .purple)
-                    presetTab(id: "concept", title: "Concept Network · مفاهيمية", icon: "network", color: .indigo)
-                    presetTab(id: "fishbone", title: "Fishbone · الأسباب الجذرية", icon: "arrow.triangle.branch", color: .orange)
-                    presetTab(id: "swot", title: "SWOT 2×2 Canvas", icon: "square.grid.2x2.fill", color: .green)
-                }
+                WorldsGlassFilterBar(
+                    selection: $selectedPreset,
+                    options: ["radial", "concept", "fishbone", "swot"],
+                    title: { presetTitle($0) },
+                    symbol: { presetSymbol($0) },
+                    identifier: { "mindmap-preset-\($0)" }
+                )
+                .padding(.vertical, 2)
             }
 
             ViewThatFits(in: .horizontal) {
@@ -787,11 +778,11 @@ struct VisualMindMapCanvasPreview: View {
             let botR = CGPoint(x: w * 0.80, y: h * 0.78)
 
             ZStack {
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(Color(red: 15 / 255, green: 16 / 255, blue: 21 / 255))
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(WorldsPalette.surface(for: colorScheme))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 14)
-                            .stroke(WorldsPalette.accent(for: colorScheme).opacity(0.32), lineWidth: 1)
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .strokeBorder(WorldsPalette.subtleBorder(for: colorScheme), lineWidth: 0.5)
                     )
 
                 Canvas { context, _ in
@@ -879,10 +870,10 @@ struct VisualMindMapCanvasPreview: View {
             }
         }
         .padding(14)
-        .background(Color(red: 15 / 255, green: 16 / 255, blue: 21 / 255), in: RoundedRectangle(cornerRadius: 14))
+        .background(WorldsPalette.surface(for: colorScheme), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 14)
-                .stroke(WorldsPalette.accent(for: colorScheme).opacity(0.32), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .strokeBorder(WorldsPalette.subtleBorder(for: colorScheme), lineWidth: 0.5)
         )
     }
 
@@ -890,19 +881,19 @@ struct VisualMindMapCanvasPreview: View {
         VStack(alignment: .leading, spacing: 3) {
             Text(title)
                 .font(.caption.weight(.bold))
-                .foregroundStyle(.white)
+                .foregroundStyle(WorldsPalette.ink(for: colorScheme))
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
             Text(subtitle)
-                .font(.system(size: 10))
-                .foregroundStyle(.white.opacity(0.75))
+                .font(.caption2)
+                .foregroundStyle(.secondary)
                 .lineLimit(1)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(10)
-        .background(Color(red: 24 / 255, green: 25 / 255, blue: 32 / 255), in: RoundedRectangle(cornerRadius: 10))
-        .overlay(RoundedRectangle(cornerRadius: 10).fill(color.opacity(0.20)))
-        .overlay(RoundedRectangle(cornerRadius: 10).stroke(color, lineWidth: 1.2))
+        .background(WorldsPalette.cardBackground(for: colorScheme), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(color.opacity(0.14)))
+        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(color.opacity(0.7), lineWidth: 1))
     }
 
     private var mindMapHeaderText: some View {
@@ -929,8 +920,7 @@ struct VisualMindMapCanvasPreview: View {
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
         }
-        .buttonStyle(.borderedProminent)
-        .tint(WorldsPalette.accent(for: colorScheme))
+        .worldsGlassButton(prominent: true)
         .fixedSize(horizontal: true, vertical: false)
         .accessibilityIdentifier("create-visual-mindmap-canvas")
     }
@@ -944,46 +934,44 @@ struct VisualMindMapCanvasPreview: View {
         }
     }
 
-    private func presetTab(id: String, title: String, icon: String, color: Color) -> some View {
-        Button {
-            selectedPreset = id
-        } label: {
-            HStack(spacing: 6) {
-                Image(systemName: icon)
-                    .foregroundStyle(color)
-                Text(title)
-                    .lineLimit(1)
-            }
-            .font(.caption.weight(.semibold))
-            .fixedSize(horizontal: true, vertical: false)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(selectedPreset == id ? color.opacity(0.22) : Color.secondary.opacity(0.14), in: Capsule())
-            .foregroundStyle(selectedPreset == id ? color : .primary)
+    private func presetTitle(_ id: String) -> String {
+        switch id {
+        case "concept": return "Concept Network \u{00B7} \u{0645}\u{0641}\u{0627}\u{0647}\u{064A}\u{0645}\u{064A}\u{0629}"
+        case "fishbone": return "Fishbone \u{00B7} \u{0627}\u{0644}\u{0623}\u{0633}\u{0628}\u{0627}\u{0628} \u{0627}\u{0644}\u{062C}\u{0630}\u{0631}\u{064A}\u{0629}"
+        case "swot": return "SWOT Canvas"
+        default: return "Radial Mind Map \u{00B7} \u{0634}\u{0639}\u{0627}\u{0639}\u{064A}\u{0629}"
         }
-        .buttonStyle(.plain)
+    }
+
+    private func presetSymbol(_ id: String) -> String {
+        switch id {
+        case "concept": return "network"
+        case "fishbone": return "arrow.triangle.branch"
+        case "swot": return "square.grid.2x2.fill"
+        default: return "brain.head.profile"
+        }
     }
 
     private func mindMapNode(title: String, subtitle: String, color: Color, isRoot: Bool = false) -> some View {
         VStack(spacing: 2) {
             Text(title)
                 .font((isRoot ? Font.subheadline : Font.caption).weight(.bold))
-                .foregroundStyle(.white)
+                .foregroundStyle(WorldsPalette.ink(for: colorScheme))
                 .lineLimit(1)
             Text(subtitle)
-                .font(.system(size: 10))
-                .foregroundStyle(.white.opacity(0.75))
+                .font(.caption2)
+                .foregroundStyle(.secondary)
                 .lineLimit(1)
         }
         .fixedSize(horizontal: true, vertical: false)
         .padding(.horizontal, isRoot ? 18 : 14)
         .padding(.vertical, isRoot ? 10 : 8)
-        .background(Color(red: 24 / 255, green: 25 / 255, blue: 32 / 255), in: RoundedRectangle(cornerRadius: 10))
+        .background(WorldsPalette.cardBackground(for: colorScheme), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(color.opacity(isRoot ? 0.30 : 0.20))
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(color.opacity(isRoot ? 0.22 : 0.14))
         )
-        .overlay(RoundedRectangle(cornerRadius: 10).stroke(color, lineWidth: isRoot ? 2 : 1.4))
+        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(color.opacity(isRoot ? 0.9 : 0.7), lineWidth: isRoot ? 1.5 : 1))
     }
 }
 
@@ -1036,29 +1024,14 @@ struct WorldsPlanningHubView: View {
 
                 if showSubTabs {
                     ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            ForEach(["Tasks", "Goals & OKRs", "Calendar", "Inbox (3)", "Print Queue (3)"], id: \.self) { tab in
-                                Button {
-                                    activeTab = tab
-                                } label: {
-                                    Text(tab)
-                                        .font(.caption.weight(.semibold))
-                                        .lineLimit(1)
-                                        .fixedSize(horizontal: true, vertical: false)
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 6)
-                                        .background(
-                                            activeTab == tab
-                                                ? WorldsPalette.accent(for: colorScheme).opacity(0.20)
-                                                : Color.secondary.opacity(0.12),
-                                            in: Capsule()
-                                        )
-                                        .foregroundStyle(activeTab == tab ? WorldsPalette.accent(for: colorScheme) : .primary)
-                                }
-                                .buttonStyle(.plain)
-                                .accessibilityIdentifier("planning-tab-\(tab)")
-                            }
-                        }
+                        WorldsGlassFilterBar(
+                            selection: $activeTab,
+                            options: ["Tasks", "Goals & OKRs", "Calendar", "Inbox (3)", "Print Queue (3)"],
+                            title: { $0 },
+                            symbol: { _ in nil },
+                            identifier: { "planning-tab-\($0)" }
+                        )
+                        .padding(.vertical, 2)
                     }
                 }
 
@@ -1078,12 +1051,11 @@ struct WorldsPlanningHubView: View {
                         tasks.insert(("t\(tasks.count + 1)", newTaskTitle, "High", "Today", "Workspace", false, false), at: 0)
                         newTaskTitle = ""
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(WorldsPalette.accent(for: colorScheme))
+                    .worldsGlassButton(prominent: true)
                     .fixedSize(horizontal: true, vertical: false)
                 }
                 .padding(12)
-                .worldsGlass(cornerRadius: 12)
+                .worldsContentCard(cornerRadius: 16)
 
                 if activeTab == "Goals & OKRs" {
                     goalsSection
@@ -1116,7 +1088,7 @@ struct WorldsPlanningHubView: View {
             .frame(maxWidth: 1080, alignment: .leading)
             .frame(maxWidth: .infinity)
         }
-        .background(WorldsPalette.groupedCanvas(for: colorScheme))
+        .worldsDestinationCanvas()
         .onAppear { activeTab = initialTab }
         .onChange(of: initialTab) { _, val in activeTab = val }
         .accessibilityIdentifier("planning-hub-view")
@@ -1506,7 +1478,7 @@ struct WorldsStudyPackHubView: View {
             .frame(maxWidth: 1080, alignment: .leading)
             .frame(maxWidth: .infinity)
         }
-        .background(WorldsPalette.groupedCanvas(for: colorScheme))
+        .worldsDestinationCanvas()
         .accessibilityIdentifier("study-pack-hub-view")
     }
 
@@ -1548,10 +1520,7 @@ struct WorldsStudyPackHubView: View {
 
             ForEach(platformLinks, id: \.title) { link in
                 HStack(spacing: 10) {
-                    Image(systemName: link.icon)
-                        .foregroundStyle(link.color)
-                        .frame(width: 28, height: 28)
-                        .background(link.color.opacity(0.15), in: RoundedRectangle(cornerRadius: 7))
+                    WorldsIconTile(link.icon, color: link.color, size: 28)
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text(link.title)
@@ -1725,7 +1694,7 @@ struct WorldsCreativeStudioView: View {
             .frame(maxWidth: 1080, alignment: .leading)
             .frame(maxWidth: .infinity)
         }
-        .background(WorldsPalette.paper(for: colorScheme))
+        .worldsDestinationCanvas()
         .navigationTitle("Studio")
         .accessibilityIdentifier("creative-studio-view")
     }
@@ -1745,9 +1714,10 @@ struct WorldsCreativeStudioView: View {
             .padding(10)
             .frame(width: width, alignment: .leading)
             .background(
-                selectedSlideIndex == idx ? Color.orange.opacity(0.22) : Color.secondary.opacity(0.14),
-                in: RoundedRectangle(cornerRadius: 8)
+                selectedSlideIndex == idx ? WorldsPalette.lens(for: colorScheme) : WorldsPalette.surface(for: colorScheme).opacity(0.6),
+                in: RoundedRectangle(cornerRadius: 10, style: .continuous)
             )
+            .animation(WorldsMotion.selection, value: selectedSlideIndex)
         }
         .buttonStyle(.plain)
     }
@@ -1757,7 +1727,7 @@ struct WorldsCreativeStudioView: View {
             RoundedRectangle(cornerRadius: 14)
                 .fill(
                     LinearGradient(
-                        colors: [Color(red: 20 / 255, green: 21 / 255, blue: 28 / 255), Color(red: 12 / 255, green: 12 / 255, blue: 16 / 255)],
+                        colors: [WorldsPalette.surfaceDeep, WorldsPalette.darkCanvas],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
@@ -1808,33 +1778,12 @@ struct WorldsCreativeStudioView: View {
                     .font(.caption2.weight(.semibold))
                     .lineLimit(1)
                     .fixedSize(horizontal: true, vertical: false)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(WorldsPalette.accent(for: colorScheme).opacity(0.18), in: Capsule())
+                    .foregroundStyle(.secondary)
             }
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
-                    ForEach(["Fountain Ink", "Pencil Tilt", "Highlighter", "Laser", "Shapes"], id: \.self) { tool in
-                        Button {
-                            activeBrush = tool
-                        } label: {
-                            Text(tool)
-                                .font(.caption2.weight(.medium))
-                                .lineLimit(1)
-                                .fixedSize(horizontal: true, vertical: false)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 5)
-                                .background(activeBrush == tool ? WorldsPalette.accent(for: colorScheme).opacity(0.22) : Color.secondary.opacity(0.14), in: Capsule())
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
-
-            ZStack {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(red: 16 / 255, green: 17 / 255, blue: 21 / 255))
+            ZStack(alignment: .bottom) {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(WorldsPalette.surface(for: colorScheme))
                     .frame(height: 185)
                 Canvas { context, size in
                     var curve = Path()
@@ -1850,6 +1799,19 @@ struct WorldsCreativeStudioView: View {
                     context.stroke(Path(roundedRect: rect, cornerRadius: 10), with: .color(.cyan), lineWidth: 2)
                 }
                 .frame(height: 185)
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    WorldsGlassFilterBar(
+                        selection: $activeBrush,
+                        options: ["Fountain Ink", "Pencil Tilt", "Highlighter", "Laser", "Shapes"],
+                        title: { $0 },
+                        symbol: { brushSymbol($0) },
+                        identifier: { "studio-brush-\($0)" }
+                    )
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 2)
+                }
+                .padding(.bottom, 8)
             }
         }
         .padding(16)
@@ -1870,28 +1832,9 @@ struct WorldsCreativeStudioView: View {
                     .fixedSize(horizontal: true, vertical: false)
             }
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
-                    ForEach(["Shaded + Wireframe", "Wireframe CAD", "Studio Shaded"], id: \.self) { mode in
-                        Button {
-                            renderMode3D = mode
-                        } label: {
-                            Text(mode)
-                                .font(.caption2.weight(.medium))
-                                .lineLimit(1)
-                                .fixedSize(horizontal: true, vertical: false)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 5)
-                                .background(renderMode3D == mode ? Color.cyan.opacity(0.22) : Color.secondary.opacity(0.14), in: Capsule())
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
-
-            ZStack {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(red: 14 / 255, green: 18 / 255, blue: 24 / 255))
+            ZStack(alignment: .bottom) {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(WorldsPalette.surface(for: colorScheme))
                     .frame(height: 185)
 
                 Canvas { context, size in
@@ -1914,10 +1857,33 @@ struct WorldsCreativeStudioView: View {
                     context.stroke(wire, with: .color(.cyan), lineWidth: 2)
                 }
                 .frame(height: 185)
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    WorldsGlassFilterBar(
+                        selection: $renderMode3D,
+                        options: ["Shaded + Wireframe", "Wireframe CAD", "Studio Shaded"],
+                        title: { $0 },
+                        symbol: { _ in nil },
+                        identifier: { "studio-render-\($0)" }
+                    )
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 2)
+                }
+                .padding(.bottom, 8)
             }
         }
         .padding(16)
         .worldsGlass(cornerRadius: 16)
+    }
+
+    private func brushSymbol(_ brush: String) -> String {
+        switch brush {
+        case "Pencil Tilt": return "pencil"
+        case "Highlighter": return "highlighter"
+        case "Laser": return "rays"
+        case "Shapes": return "square.on.circle"
+        default: return "pencil.tip"
+        }
     }
 
     private func slideTitle(_ idx: Int) -> String {
@@ -1943,7 +1909,7 @@ struct WorldsCreativeStudioView: View {
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(red: 28 / 255, green: 30 / 255, blue: 38 / 255).opacity(0.85), in: RoundedRectangle(cornerRadius: 10))
+        .background(WorldsPalette.raisedSurface.opacity(0.85), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 10).stroke(color.opacity(0.45), lineWidth: 1))
     }
 }

@@ -53,7 +53,7 @@ struct PersonalVideoView: View {
                 VStack(spacing: 16) {
                     ContentUnavailableView("Choose the Worlds folder", systemImage: "folder", description: Text("Choose the folder containing the open worlds.db and its attachments. The original video remains in that folder."))
                     if loading { ProgressView("Opening video") }
-                    else { Button("Choose folder") { choosingFolder = true }.buttonStyle(.borderedProminent) }
+                    else { Button("Choose folder") { choosingFolder = true }.worldsGlassButton(prominent: true) }
                     if let failure { Text(failure).foregroundStyle(.secondary).textSelection(.enabled) }
                     Button("Close") { dismiss() }
                 }.padding()

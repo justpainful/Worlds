@@ -116,11 +116,11 @@ struct LocalGalleryDraftView: View {
                     }
                     if state.currentCaption != nil {
                         TextField("Caption", text: $state.caption).disabled(state.busy || state.blocked).accessibilityIdentifier("fixture-gallery-caption")
-                        Button("Apply caption") { state.apply() }.disabled(!state.pending || state.busy || state.blocked)
+                        Button("Apply caption") { state.apply() }.worldsGlassButton().disabled(!state.pending || state.busy || state.blocked)
                     } else { Text("This caption cannot be edited safely.") }
-                    Button("Undo") { state.history(false) }.disabled(state.pending || !draft.canUndo || state.busy || state.blocked)
-                    Button("Redo") { state.history(true) }.disabled(state.pending || !draft.canRedo || state.busy || state.blocked)
-                    Button("Save") { Task { await state.save() } }.disabled(state.pending || !draft.dirty || state.busy || state.blocked).accessibilityIdentifier("fixture-gallery-save")
+                    Button("Undo") { state.history(false) }.worldsGlassButton().disabled(state.pending || !draft.canUndo || state.busy || state.blocked)
+                    Button("Redo") { state.history(true) }.worldsGlassButton().disabled(state.pending || !draft.canRedo || state.busy || state.blocked)
+                    Button("Save") { Task { await state.save() } }.worldsGlassButton(prominent: true).disabled(state.pending || !draft.dirty || state.busy || state.blocked).accessibilityIdentifier("fixture-gallery-save")
                 }
                 if state.opaqueRetained { Text("Fixture unknown block retained").accessibilityIdentifier("fixture-gallery-opaque") }
                 if state.assetsVerified { Text("Fixture attachment bytes verified").accessibilityIdentifier("fixture-gallery-assets") }
@@ -129,6 +129,7 @@ struct LocalGalleryDraftView: View {
                 if state.busy { ProgressView() }
             }
             .navigationTitle("Edit fixture gallery")
+            .worldsSheetGlass()
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { if state.dirty { discard = true } else { dismiss() } }.disabled(state.busy) } }
             .alert("Discard the gallery draft?", isPresented: $discard) { Button("Discard", role: .destructive) { dismiss() }; Button("Keep editing", role: .cancel) {} }
             .interactiveDismissDisabled(state.busy || state.dirty)

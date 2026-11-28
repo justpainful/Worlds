@@ -46,6 +46,8 @@ struct LocalCreateGalleryView: View {
                 if busy { ProgressView("Creating gallery") }
             }
             .navigationTitle("New gallery")
+            .formStyle(.grouped)
+            .worldsSheetGlass()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Close") { if !submitted && !title.isEmpty { confirmDiscard = true } else { dismiss() } }.disabled(busy) }
                 ToolbarItem(placement: .confirmationAction) {

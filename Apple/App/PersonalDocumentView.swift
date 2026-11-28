@@ -55,7 +55,7 @@ struct PersonalDocumentView: View {
                 VStack(spacing: 16) {
                     ContentUnavailableView("Choose the Worlds folder", systemImage: "folder", description: Text("Choose the folder containing the open worlds.db and its attachments."))
                     if loading { ProgressView("Opening file") }
-                    else { Button("Choose folder") { choosingFolder = true }.buttonStyle(.borderedProminent) }
+                    else { Button("Choose folder") { choosingFolder = true }.worldsGlassButton(prominent: true) }
                     if let failure { Text(failure).foregroundStyle(.secondary).textSelection(.enabled) }
                     Button("Close") { dismiss() }
                 }.padding()

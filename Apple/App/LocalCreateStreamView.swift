@@ -60,6 +60,8 @@ struct LocalCreateStreamView: View {
                 if busy { ProgressView("Creating stream") }
             }
             .navigationTitle("New stream")
+            .formStyle(.grouped)
+            .worldsSheetGlass()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Close") { if !submitted && hasDraft { confirmDiscard = true } else { dismiss() } }.disabled(busy) }
                 ToolbarItem(placement: .confirmationAction) { Button("Create") { Task { await create() } }.disabled(!valid).accessibilityIdentifier("create-personal-stream") }

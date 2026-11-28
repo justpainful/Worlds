@@ -46,6 +46,8 @@ struct LocalCreateDocumentView: View {
                 if busy { ProgressView("Creating document") }
             }
             .navigationTitle("New document")
+            .formStyle(.grouped)
+            .worldsSheetGlass()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Close") { if !submitted && !title.isEmpty { confirmDiscard = true } else { dismiss() } }.disabled(busy) }
                 ToolbarItem(placement: .confirmationAction) {

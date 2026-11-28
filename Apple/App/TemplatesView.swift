@@ -213,31 +213,14 @@ struct TemplatesView: View {
                 }
 
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(categories, id: \.self) { category in
-                            Button {
-                                selectedCategory = category
-                            } label: {
-                                Text(category)
-                                    .font(.caption.weight(.semibold))
-                                    .fixedSize(horizontal: true, vertical: false)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 6)
-                                    .background(
-                                        selectedCategory == category
-                                            ? WorldsPalette.accent(for: colorScheme).opacity(0.22)
-                                            : Color.secondary.opacity(0.1),
-                                        in: Capsule()
-                                    )
-                                    .foregroundStyle(
-                                        selectedCategory == category
-                                            ? WorldsPalette.accent(for: colorScheme)
-                                            : .primary
-                                    )
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
+                    WorldsGlassFilterBar(
+                        selection: $selectedCategory,
+                        options: categories,
+                        title: { $0 },
+                        symbol: { _ in nil },
+                        identifier: { "templates-category-\($0)" }
+                    )
+                    .padding(.vertical, 2)
                 }
 
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 280), spacing: 16)], spacing: 16) {
@@ -251,7 +234,7 @@ struct TemplatesView: View {
             .frame(maxWidth: 1020, alignment: .leading)
             .frame(maxWidth: .infinity)
         }
-        .background(WorldsPalette.paper(for: colorScheme))
+        .worldsDestinationCanvas()
         .navigationTitle("Templates")
         .accessibilityIdentifier("templates-view")
     }
@@ -259,20 +242,13 @@ struct TemplatesView: View {
     private func templateCard(_ template: WorkspaceTemplate) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top) {
-                Image(systemName: template.icon)
-                    .font(.title3)
-                    .foregroundStyle(template.color)
-                    .frame(width: 36, height: 36)
-                    .background(template.color.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
+                WorldsIconTile(template.icon, color: template.color, size: 36)
 
                 Spacer()
 
                 Text(template.category)
                     .font(.caption2.weight(.medium))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(template.color.opacity(0.15), in: Capsule())
-                    .foregroundStyle(template.color)
+                    .foregroundStyle(.secondary)
             }
 
             VStack(alignment: .leading, spacing: 4) {
@@ -298,17 +274,15 @@ struct TemplatesView: View {
                     Image(systemName: "arrow.forward")
                         .font(.caption)
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
+                .padding(.horizontal, 4)
+                .padding(.vertical, 2)
                 .frame(maxWidth: .infinity)
-                .background(WorldsPalette.accent(for: colorScheme).opacity(0.15), in: RoundedRectangle(cornerRadius: 8))
-                .foregroundStyle(WorldsPalette.accent(for: colorScheme))
             }
-            .buttonStyle(.plain)
+            .worldsGlassButton()
             .accessibilityLabel("Use \(template.title) template")
         }
-        .padding(16)
+        .padding(18)
         .frame(minHeight: 180)
-        .worldsGlass(cornerRadius: 14)
+        .worldsContentCard(cornerRadius: 18)
     }
 }

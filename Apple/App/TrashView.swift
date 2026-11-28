@@ -31,7 +31,7 @@ struct TrashView: View {
                     systemImage: "trash",
                     description: Text("Items you delete will be kept here until you delete them permanently or empty the trash.")
                 )
-                .background(WorldsPalette.paper(for: colorScheme))
+                .worldsDestinationCanvas()
             } else {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
@@ -58,21 +58,27 @@ struct TrashView: View {
                                 Button("Empty Trash", role: .destructive) {
                                     confirmEmptyTrash = true
                                 }
-                                .buttonStyle(.bordered)
+                                .worldsGlassButton()
                                 .accessibilityIdentifier("empty-trash-button")
                             }
                         }
                         .padding(.vertical, 4)
 
-                        ForEach(trashedPages) { page in
-                            trashItemRow(page)
+                        VStack(spacing: 0) {
+                            ForEach(trashedPages) { page in
+                                trashItemRow(page)
+                                if page.id != trashedPages.last?.id {
+                                    Divider().padding(.leading, 62)
+                                }
+                            }
                         }
+                        .worldsContentCard(cornerRadius: 16)
                     }
                     .padding(dynamicTypeSize.isAccessibilitySize ? 16 : 24)
                     .frame(maxWidth: 820, alignment: .leading)
                     .frame(maxWidth: .infinity)
                 }
-                .background(WorldsPalette.paper(for: colorScheme))
+                .worldsDestinationCanvas()
             }
         }
         .navigationTitle("Trash")
@@ -104,7 +110,7 @@ struct TrashView: View {
                 .font(.body)
                 .foregroundStyle(.secondary)
                 .frame(width: 34, height: 34)
-                .background(Color.secondary.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
+                .background(WorldsPalette.lens(for: colorScheme), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(page.title.isEmpty ? String(localized: "Untitled") : page.title)
@@ -125,7 +131,7 @@ struct TrashView: View {
                 Label("Restore", systemImage: "arrow.uturn.backward")
                     .font(.subheadline)
             }
-            .buttonStyle(.bordered)
+            .worldsGlassButton()
             .accessibilityLabel("Restore \(page.title)")
 
             if permanentDeletionAvailable {
@@ -140,9 +146,9 @@ struct TrashView: View {
                 .accessibilityLabel("Permanently delete \(page.title)")
             }
         }
-        .padding(14)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .worldsGlass(cornerRadius: 12)
     }
 
     private func kindIcon(_ kind: String) -> String {

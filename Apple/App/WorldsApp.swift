@@ -583,7 +583,14 @@ private struct WorldsLibraryView: View {
     }
 
     var body: some View {
+        #if os(macOS)
+        // The window itself is translucent, as in the Windows app: the sidebar
+        // sits on the window material and the content floats in a calm panel.
         applyWorkspaceModifiers(to: activeWorkspaceContent)
+            .worldsWindowGlass()
+        #else
+        applyWorkspaceModifiers(to: activeWorkspaceContent)
+        #endif
     }
 
     @ViewBuilder
@@ -963,6 +970,8 @@ private struct WorldsLibraryView: View {
                     }
                 }
             }
+            .tabViewStyle(.sidebarAdaptable)
+            .modifier(WorldsPhoneTabBarGlass())
             .accessibilityIdentifier("phone-liquid-glass-tabbar")
         } else {
             TabView(selection: $destination) {
@@ -1024,62 +1033,92 @@ private struct WorldsLibraryView: View {
     @ViewBuilder
     private func phoneTabStack<Content: View>(for tab: WorkspaceDestination, @ViewBuilder content: () -> Content) -> some View {
         NavigationStack {
-            content()
-                .overlay { readingRulerOverlay }
-                .navigationDestination(item: phoneDetailBinding(for: tab)) { pageID in
-                    selectedResourceDetail(for: pageID)
-                        .overlay { readingRulerOverlay }
-                        #if WORLDS_EXPERIMENTAL_LOCAL_COPY
-                        .toolbar { resourceEditToolbar(for: pageID) }
-                        #endif
-                }
-                .toolbar {
-                    ToolbarItemGroup(placement: .primaryAction) {
-                        CompactFocusToolbarButton(model: focusModel)
-                        Button {
-                            showCreateSheet = true
-                        } label: {
-                            Label("New", systemImage: "plus")
-                        }
-                        .accessibilityIdentifier("open-create-sheet-button")
-
-                        Menu {
-                            Button {
-                                destination = .library
-                                libraryCollection = .templates
-                            } label: {
-                                Label("Templates", systemImage: "square.grid.2x2")
-                            }
-                            Button {
-                                destination = .library
-                                libraryCollection = .trash
-                            } label: {
-                                Label("Trash", systemImage: "trash")
-                            }
-                            Divider()
-                            #if WORLDS_EXPERIMENTAL_ACCOUNT
-                            Button { showAccount = true } label: {
-                                Label("Account", systemImage: "person.crop.circle")
-                            }
+            phoneChromeToolbar(
+                content()
+                    .overlay { readingRulerOverlay }
+                    .navigationDestination(item: phoneDetailBinding(for: tab)) { pageID in
+                        selectedResourceDetail(for: pageID)
+                            .overlay { readingRulerOverlay }
+                            #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+                            .toolbar { resourceEditToolbar(for: pageID) }
                             #endif
-                            Button {
-                                #if WORLDS_EXPERIMENTAL_LOCAL_COPY
-                                copyImportSelected = false
-                                #endif
-                                showImporter = true
-                            } label: {
-                                Label("Open Database…", systemImage: "folder")
-                            }
-                            Button { showSettings = true } label: {
-                                Label("Settings…", systemImage: "gearshape")
-                            }
-                        } label: {
-                            Label("More", systemImage: "ellipsis.circle")
+                    }
+            )
+        }
+    }
+
+    /// The floating top capsule on iPhone: focus timer, New and More. On 26 the
+    /// system groups the items into one Liquid Glass capsule by itself; before
+    /// that the same buttons sit in one Worlds glass capsule.
+    @ViewBuilder
+    private func phoneChromeToolbar<V: View>(_ content: V) -> some View {
+        if #available(iOS 26.0, macOS 26.0, *) {
+            content.toolbar {
+                ToolbarItemGroup(placement: .primaryAction) {
+                    phoneChromeButtons
+                }
+            }
+        } else {
+            content.toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    WorldsGlassChromeGroup(spacing: 8) {
+                        HStack(spacing: 2) {
+                            phoneChromeButtons
                         }
-                        .accessibilityIdentifier("phone-more-menu")
+                        .labelStyle(.iconOnly)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .worldsGlassCapsule()
                     }
                 }
+            }
         }
+    }
+
+    @ViewBuilder
+    private var phoneChromeButtons: some View {
+        CompactFocusToolbarButton(model: focusModel)
+        Button {
+            showCreateSheet = true
+        } label: {
+            Label("New", systemImage: "plus")
+        }
+        .accessibilityIdentifier("open-create-sheet-button")
+
+        Menu {
+            Button {
+                destination = .library
+                libraryCollection = .templates
+            } label: {
+                Label("Templates", systemImage: "square.grid.2x2")
+            }
+            Button {
+                destination = .library
+                libraryCollection = .trash
+            } label: {
+                Label("Trash", systemImage: "trash")
+            }
+            Divider()
+            #if WORLDS_EXPERIMENTAL_ACCOUNT
+            Button { showAccount = true } label: {
+                Label("Account", systemImage: "person.crop.circle")
+            }
+            #endif
+            Button {
+                #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+                copyImportSelected = false
+                #endif
+                showImporter = true
+            } label: {
+                Label("Open Database…", systemImage: "folder")
+            }
+            Button { showSettings = true } label: {
+                Label("Settings…", systemImage: "gearshape")
+            }
+        } label: {
+            Label("More", systemImage: "ellipsis.circle")
+        }
+        .accessibilityIdentifier("phone-more-menu")
     }
 
     @ViewBuilder
@@ -1092,14 +1131,16 @@ private struct WorldsLibraryView: View {
                     max: dynamicTypeSize.isAccessibilitySize ? 380 : 288
                 )
         } detail: {
-            modernDetailCanvas
-                .overlay { readingRulerOverlay }
-                .toolbar {
-                    desktopToolbarItems
-                    #if WORLDS_EXPERIMENTAL_LOCAL_COPY
-                    resourceEditToolbar(for: selectedID)
+            desktopToolbar(
+                modernDetailCanvas
+                    .overlay { readingRulerOverlay }
+                    #if os(macOS)
+                    // The calm rounded content panel of the Windows app, inset from the window edge.
+                    .worldsContentPanel(cornerRadius: 16)
+                    .padding(.trailing, 8)
+                    .padding(.bottom, 8)
                     #endif
-                }
+            )
                 .inspector(isPresented: $showInspector) {
                     WorkspaceInspectorPanel(
                         selectedPage: selectedID.flatMap { id in pages.first(where: { $0.id == id }) },
@@ -1115,9 +1156,6 @@ private struct WorldsLibraryView: View {
                         onOpenSettings: { showSettings = true },
                         onMoveToTrash: { id in moveToTrash(id) }
                     )
-                    #if os(macOS)
-                    .background(WorldsVibrancyView(material: .sidebar, blendingMode: .withinWindow))
-                    #endif
                     .inspectorColumnWidth(min: 250, ideal: 290, max: 340)
                 }
         }
@@ -1169,90 +1207,255 @@ private struct WorldsLibraryView: View {
         }
     }
 
+    /// The opened workspace's name for the switcher row, as on Windows.
+    private var workspaceDisplayName: String {
+        guard let source = openedVideoDatabase else { return "Worlds" }
+        let name = source.url.deletingPathExtension().lastPathComponent
+        return name.isEmpty ? "Worlds" : name
+    }
+
+    private func sidebarSelect(_ tag: SidebarSelectionTag) {
+        withAnimation(WorldsMotion.selection) {
+            sidebarTagBinding.wrappedValue = tag
+        }
+    }
+
+    private func isSidebarSelected(_ tag: SidebarSelectionTag) -> Bool {
+        sidebarTagBinding.wrappedValue == tag
+    }
+
+    private func sidebarTile(for destination: WorkspaceDestination) -> (symbol: String, color: Color) {
+        switch destination {
+        case .home: return ("house.fill", .blue)
+        case .ai: return ("sparkles", .orange)
+        case .spaces: return ("square.stack.3d.up.fill", .teal)
+        case .library: return ("folder.fill", .indigo)
+        case .search: return ("magnifyingglass", .gray)
+        }
+    }
+
+    private func sidebarTile(for collection: LibraryCollection) -> (symbol: String, color: Color) {
+        switch collection {
+        case .all: return ("tray.full.fill", .gray)
+        case .pages: return ("doc.richtext.fill", .blue)
+        case .spreadsheets: return ("tablecells.fill", .green)
+        case .mindMaps: return ("point.3.connected.trianglepath.dotted", .purple)
+        case .studio: return ("cube.transparent.fill", .orange)
+        case .templates: return ("square.grid.2x2.fill", .indigo)
+        case .trash: return ("trash.fill", .gray)
+        }
+    }
+
+    /// Home and AI first, as on Windows, then the other destinations.
+    private var sidebarDestinations: [WorkspaceDestination] {
+        [.home, .ai, .spaces, .library, .search]
+    }
+
+    /// The sidebar of the Windows app: it sits right on the window material (the
+    /// floating glass sidebar on 26), with the workspace switcher on top, the
+    /// destinations as colourful rows, plain text section headers, a soft rounded
+    /// selection with no edge and the profile row pinned at the bottom.
     private var modernSidebarView: some View {
-        List(selection: sidebarTagBinding) {
-            Section("Workspace") {
-                ForEach(WorkspaceDestination.allCases) { item in
-                    Label(item.title, systemImage: item.systemImage)
-                        .tag(SidebarSelectionTag.destination(item))
-                        .accessibilityIdentifier("sidebar-dest-\(item.rawValue)")
-                }
-            }
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 2) {
+                    sidebarWorkspaceRow
+                        .padding(.bottom, 6)
 
-            Section("Collections") {
-                ForEach(LibraryCollection.allCases.filter { $0 != .all }) { col in
-                    Label(col.rawValue, systemImage: col.systemImage)
-                        .tag(SidebarSelectionTag.library(col))
-                        .accessibilityIdentifier("sidebar-lib-\(col.rawValue)")
-                }
-            }
+                    ForEach(sidebarDestinations) { item in
+                        let tile = sidebarTile(for: item)
+                        WorldsSidebarRow(
+                            Text(LocalizedStringKey(item.title)),
+                            isSelected: isSidebarSelected(.destination(item)),
+                            identifier: "sidebar-dest-\(item.rawValue)",
+                            action: { sidebarSelect(.destination(item)) }
+                        ) {
+                            WorldsIconTile(tile.symbol, color: tile.color, size: 24)
+                        }
+                    }
 
-            // Each pack with items in this workspace (docs/PACKS.md): its items, newest first.
-            ForEach(packSidebarGroups) { group in
-                Section(group.label) {
-                    ForEach(group.items.prefix(8)) { page in
-                        Label(page.title.isEmpty ? "Untitled" : page.title, systemImage: "square.stack")
-                            .lineLimit(1)
-                            .tag(SidebarSelectionTag.page(page.id))
-                            .accessibilityIdentifier("pack-item.\(page.id)")
+                    if !activeNonTemplatePages.isEmpty {
+                        WorldsSidebarHeader(Text("Pages"))
+                        ForEach(activeNonTemplatePages.prefix(6)) { page in
+                            WorldsSidebarRow(
+                                page.title.isEmpty ? Text("Untitled") : Text(verbatim: page.title),
+                                isSelected: isSidebarSelected(.page(page.id)),
+                                identifier: "page.\(page.id)",
+                                action: { sidebarSelect(.page(page.id)) }
+                            ) {
+                                Image(systemName: sidebarIcon(for: page.kind))
+                                    .font(.system(size: 15, weight: .regular))
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+
+                    // Each pack with items in this workspace (docs/PACKS.md): its items, newest first.
+                    ForEach(packSidebarGroups) { group in
+                        WorldsSidebarHeader(Text(verbatim: group.label))
+                        ForEach(group.items.prefix(8)) { page in
+                            WorldsSidebarRow(
+                                page.title.isEmpty ? Text("Untitled") : Text(verbatim: page.title),
+                                isSelected: isSidebarSelected(.page(page.id)),
+                                identifier: "pack-item.\(page.id)",
+                                action: { sidebarSelect(.page(page.id)) }
+                            ) {
+                                Image(systemName: "square.stack")
+                                    .font(.system(size: 15, weight: .regular))
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+
+                    WorldsSidebarHeader(Text("Library"))
+                    ForEach(LibraryCollection.allCases.filter { $0 != .all }) { col in
+                        let tile = sidebarTile(for: col)
+                        WorldsSidebarRow(
+                            Text(LocalizedStringKey(col.rawValue)),
+                            isSelected: isSidebarSelected(.library(col)),
+                            identifier: "sidebar-lib-\(col.rawValue)",
+                            action: { sidebarSelect(.library(col)) }
+                        ) {
+                            WorldsIconTile(tile.symbol, color: tile.color, size: 24)
+                        }
                     }
                 }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
             }
+            .scrollIndicators(.hidden)
 
-            if !activeNonTemplatePages.isEmpty {
-                Section("Recent Files") {
-                    ForEach(activeNonTemplatePages.prefix(4)) { page in
-                        Label(page.title.isEmpty ? "Untitled" : page.title, systemImage: sidebarIcon(for: page.kind))
-                            .lineLimit(1)
-                            .tag(SidebarSelectionTag.page(page.id))
-                            .accessibilityIdentifier("page.\(page.id)")
-                    }
-                }
-            }
+            sidebarProfileRow
         }
-        .listStyle(.sidebar)
         .navigationTitle("Worlds")
-        #if os(macOS)
-        .scrollContentBackground(.hidden)
-        .background(WorldsVibrancyView(material: .sidebar, blendingMode: .behindWindow).ignoresSafeArea())
-        #endif
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            VStack(spacing: 0) {
-                Divider()
-                HStack(spacing: 10) {
-                    Button {
-                        showSettings = true
-                    } label: {
-                        Label("Settings", systemImage: "gearshape")
-                            .font(.caption.weight(.medium))
-                    }
-                    .buttonStyle(.borderless)
-                    .accessibilityIdentifier("open-settings-button")
+    }
 
-                    Spacer()
-
-                    Button {
-                        #if WORLDS_EXPERIMENTAL_LOCAL_COPY
-                        copyImportSelected = false
-                        #endif
-                        showImporter = true
-                    } label: {
-                        Image(systemName: "externaldrive.badge.plus")
-                            .font(.caption)
-                    }
-                    .buttonStyle(.borderless)
-                    .help("Open local database…")
-                    .accessibilityIdentifier("sidebar-open-database")
+    /// The workspace switcher with the New action, at the top of the sidebar.
+    private var sidebarWorkspaceRow: some View {
+        HStack(spacing: 4) {
+            Menu {
+                Button {
+                    #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+                    copyImportSelected = false
+                    #endif
+                    showImporter = true
+                } label: {
+                    Label("Open Database…", systemImage: "externaldrive")
                 }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
+                #if os(macOS)
+                Button {
+                    NotificationCenter.default.post(name: .worldsOpenOwnWorkspaceAction, object: nil)
+                } label: {
+                    Label("Open Desktop Workspace", systemImage: "desktopcomputer")
+                }
+                #endif
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "person.fill")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 24, height: 24)
+                        .background(WorldsPalette.sidebarSelection(for: colorScheme), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                    Text(verbatim: workspaceDisplayName)
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
+                .contentShape(Rectangle())
             }
-            #if os(macOS)
-            .background(.ultraThinMaterial)
-            #else
-            .background(.bar)
-            #endif
+            .menuStyle(.button)
+            .buttonStyle(.plain)
+            .menuIndicator(.hidden)
+            .disabled(databaseActionsDisabled)
+            .accessibilityIdentifier("sidebar-workspace-switcher")
+
+            Button {
+                showCreateSheet = true
+            } label: {
+                Label("New", systemImage: "square.and.pencil")
+                    .labelStyle(.iconOnly)
+                    .font(.system(size: 16, weight: .regular))
+                    .frame(width: 30, height: 30)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+            .help("New")
+            .accessibilityIdentifier("sidebar-new-button")
         }
+    }
+
+    /// The account or workspace row pinned at the bottom, with the settings button.
+    private var sidebarProfileRow: some View {
+        HStack(spacing: 10) {
+            #if WORLDS_EXPERIMENTAL_ACCOUNT
+            Button { showAccount = true } label: {
+                sidebarProfileLabel(Text("Account"))
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("sidebar-account-button")
+            #else
+            sidebarProfileLabel(Text(verbatim: workspaceDisplayName))
+            #endif
+
+            Spacer(minLength: 0)
+
+            Button {
+                #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+                copyImportSelected = false
+                #endif
+                showImporter = true
+            } label: {
+                Image(systemName: "externaldrive.badge.plus")
+                    .font(.system(size: 15, weight: .regular))
+            }
+            .buttonStyle(.borderless)
+            .foregroundStyle(.secondary)
+            .help("Open local database…")
+            .accessibilityIdentifier("sidebar-open-database")
+
+            Button {
+                showSettings = true
+            } label: {
+                Label("Settings", systemImage: "slider.horizontal.3")
+                    .labelStyle(.iconOnly)
+                    .font(.system(size: 15, weight: .regular))
+            }
+            .buttonStyle(.borderless)
+            .foregroundStyle(.secondary)
+            .help("Settings")
+            .accessibilityIdentifier("open-settings-button")
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+    }
+
+    private func sidebarProfileLabel(_ title: Text) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: "person.fill")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 28, height: 28)
+                .background(
+                    LinearGradient(
+                        colors: [WorldsPalette.accent(for: colorScheme), WorldsPalette.accent(for: colorScheme).opacity(0.7)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    in: Circle()
+                )
+            title
+                .font(.body.weight(.semibold))
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+        }
+        .contentShape(Rectangle())
     }
 
     @ViewBuilder
@@ -1485,56 +1688,140 @@ private struct WorldsLibraryView: View {
     }
     #endif
 
+    /// Applies the desktop toolbar. On 26 the controls are grouped into separate
+    /// Liquid Glass capsules like the Windows toolbar (ToolbarSpacer only exists
+    /// there, so the whole toolbar is chosen once per system).
+    @ViewBuilder
+    private func desktopToolbar<V: View>(_ content: V) -> some View {
+        if #available(iOS 26.0, macOS 26.0, *) {
+            content.toolbar {
+                desktopGlassToolbarItems
+                #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+                resourceEditToolbar(for: selectedID)
+                #endif
+            }
+        } else {
+            content.toolbar {
+                desktopToolbarItems
+                #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+                resourceEditToolbar(for: selectedID)
+                #endif
+            }
+        }
+    }
+
+    private var detailBackButton: some View {
+        Button {
+            withAnimation(WorldsMotion.tab) {
+                if let prev = returnStack.popLast() {
+                    selectedID = prev
+                } else {
+                    selectedID = nil
+                }
+            }
+        } label: {
+            Label("Back", systemImage: "chevron.backward")
+        }
+        .accessibilityIdentifier("detail-back-button")
+    }
+
+    private var createToolbarButton: some View {
+        Button {
+            showCreateSheet = true
+        } label: {
+            Label("Create", systemImage: "plus")
+        }
+        .accessibilityIdentifier("open-create-sheet-button")
+    }
+
+    private var inspectorToolbarButton: some View {
+        Button {
+            withAnimation(WorldsMotion.popover) {
+                showInspector.toggle()
+            }
+        } label: {
+            Label(showInspector ? "Hide Inspector" : "Show Inspector", systemImage: "sidebar.right")
+        }
+        .accessibilityIdentifier("toggle-inspector-button")
+    }
+
+    #if os(macOS)
+    private var quickNoteToolbarButton: some View {
+        Button {
+            hotCorners.openQuickNote()
+        } label: {
+            Label("Quick Note", systemImage: "note.text")
+        }
+        .accessibilityIdentifier("open-quick-note-button")
+    }
+    #endif
+
+    #if WORLDS_EXPERIMENTAL_ACCOUNT
+    private var accountToolbarButton: some View {
+        Button { showAccount = true } label: {
+            Label("Account", systemImage: "person.crop.circle")
+        }
+    }
+    #endif
+
+    /// The 26 toolbar: back on its own, the focus timer, the prominent Create
+    /// capsule, then the panel actions together, each group one glass capsule.
+    @available(iOS 26.0, macOS 26.0, *)
+    @ToolbarContentBuilder
+    private var desktopGlassToolbarItems: some ToolbarContent {
+        if selectedID != nil {
+            ToolbarItem(placement: .navigation) {
+                detailBackButton
+            }
+        }
+
+        ToolbarItem(placement: .primaryAction) {
+            CompactFocusToolbarButton(model: focusModel)
+        }
+
+        ToolbarSpacer(.fixed, placement: .primaryAction)
+
+        ToolbarItem(placement: .primaryAction) {
+            createToolbarButton
+                .labelStyle(.titleAndIcon)
+                .worldsGlassButton(prominent: true)
+        }
+
+        ToolbarSpacer(.fixed, placement: .primaryAction)
+
+        ToolbarItemGroup(placement: .primaryAction) {
+            #if os(macOS)
+            quickNoteToolbarButton
+            #endif
+            #if WORLDS_EXPERIMENTAL_ACCOUNT
+            accountToolbarButton
+            #endif
+            inspectorToolbarButton
+        }
+    }
+
     @ToolbarContentBuilder
     private var desktopToolbarItems: some ToolbarContent {
         if selectedID != nil {
             ToolbarItem(placement: .navigation) {
-                Button {
-                    if let prev = returnStack.popLast() {
-                        selectedID = prev
-                    } else {
-                        selectedID = nil
-                    }
-                } label: {
-                    Label("Back", systemImage: "chevron.backward")
-                }
-                .accessibilityIdentifier("detail-back-button")
+                detailBackButton
             }
         }
 
         ToolbarItemGroup(placement: .primaryAction) {
             CompactFocusToolbarButton(model: focusModel)
 
-            Button {
-                showCreateSheet = true
-            } label: {
-                Label("Create", systemImage: "plus")
-            }
-            .accessibilityIdentifier("open-create-sheet-button")
+            createToolbarButton
 
             #if os(macOS)
-            Button {
-                hotCorners.openQuickNote()
-            } label: {
-                Label("Quick Note", systemImage: "note.text")
-            }
-            .accessibilityIdentifier("open-quick-note-button")
+            quickNoteToolbarButton
             #endif
 
             #if WORLDS_EXPERIMENTAL_ACCOUNT
-            Button { showAccount = true } label: {
-                Label("Account", systemImage: "person.crop.circle")
-            }
+            accountToolbarButton
             #endif
 
-            Button {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    showInspector.toggle()
-                }
-            } label: {
-                Label(showInspector ? "Hide Inspector" : "Show Inspector", systemImage: "sidebar.right")
-            }
-            .accessibilityIdentifier("toggle-inspector-button")
+            inspectorToolbarButton
         }
     }
 
@@ -2534,7 +2821,6 @@ private struct WorldsLibraryView: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
-        .background(colorScheme == .dark ? WorldsPalette.darkSidebar : WorldsPalette.surface(for: colorScheme))
         .dynamicTypeSize(...DynamicTypeSize.large)
     }
 
@@ -3538,4 +3824,91 @@ struct PackSidebarGroup: Identifiable {
     let id: String
     let label: String
     let items: [StoredPage]
+}
+
+/// A Windows style sidebar row: icon, title and a soft rounded selection with no edge.
+private struct WorldsSidebarRow<Icon: View>: View {
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var hovering = false
+    private let title: Text
+    private let isSelected: Bool
+    private let identifier: String
+    private let action: () -> Void
+    private let icon: Icon
+
+    init(_ title: Text, isSelected: Bool, identifier: String, action: @escaping () -> Void, @ViewBuilder icon: () -> Icon) {
+        self.title = title
+        self.isSelected = isSelected
+        self.identifier = identifier
+        self.action = action
+        self.icon = icon()
+    }
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: 9, style: .continuous)
+        Button(action: action) {
+            HStack(spacing: 10) {
+                icon
+                    .frame(width: 24, height: 24)
+                title
+                    .font(.body.weight(isSelected ? .semibold : .regular))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(shape.fill(highlight))
+            .contentShape(shape)
+        }
+        .buttonStyle(.plain)
+        .onHover { inside in
+            withAnimation(WorldsMotion.hover) { hovering = inside }
+        }
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .accessibilityIdentifier(identifier)
+    }
+
+    private var highlight: Color {
+        if isSelected { return WorldsPalette.sidebarSelection(for: colorScheme) }
+        if hovering { return WorldsPalette.sidebarSelection(for: colorScheme).opacity(0.5) }
+        return Color.clear
+    }
+}
+
+/// A plain text section header, as in the Windows sidebar.
+private struct WorldsSidebarHeader: View {
+    private let title: Text
+
+    init(_ title: Text) {
+        self.title = title
+    }
+
+    var body: some View {
+        title
+            .font(.subheadline.weight(.medium))
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+            .padding(.horizontal, 8)
+            .padding(.top, 16)
+            .padding(.bottom, 4)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityAddTraits(.isHeader)
+    }
+}
+
+/// The iPhone tab bar on 26 tucks away while reading, as in the system apps.
+private struct WorldsPhoneTabBarGlass: ViewModifier {
+    func body(content: Content) -> some View {
+        #if os(iOS)
+        if #available(iOS 26.0, *) {
+            content.tabBarMinimizeBehavior(.onScrollDown)
+        } else {
+            content
+        }
+        #else
+        content
+        #endif
+    }
 }

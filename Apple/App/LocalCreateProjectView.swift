@@ -46,6 +46,8 @@ struct LocalCreateProjectView: View {
                 if busy { ProgressView("Creating project") }
             }
             .navigationTitle("New project")
+            .formStyle(.grouped)
+            .worldsSheetGlass()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Close") { if !submitted && !title.isEmpty { confirmDiscard = true } else { dismiss() } }.disabled(busy) }
                 ToolbarItem(placement: .confirmationAction) {

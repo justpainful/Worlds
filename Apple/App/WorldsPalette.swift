@@ -41,4 +41,34 @@ enum WorldsPalette {
         }
         return scheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.07)
     }
+
+    // Roles shared with the Windows and web app (src/styles/tokens.css).
+    static let surfaceDeep = Color(red: 28 / 255, green: 28 / 255, blue: 30 / 255) // #1C1C1E
+    static let surfaceRaised = Color(red: 36 / 255, green: 36 / 255, blue: 38 / 255) // #242426
+    static let surfaceSidebar = Color(red: 17 / 255, green: 17 / 255, blue: 19 / 255) // #111113
+
+    /// Window behind the sidebar when transparency is off or on iOS.
+    static func windowFallback(for scheme: ColorScheme) -> Color {
+        scheme == .dark ? surfaceSidebar : Color(red: 235 / 255, green: 235 / 255, blue: 239 / 255) // #EBEBEF
+    }
+
+    /// The content panel beside the sidebar.
+    static func panel(for scheme: ColorScheme) -> Color {
+        scheme == .dark ? surfaceDeep.opacity(0.94) : Color.white.opacity(0.96)
+    }
+
+    /// Hairline edge of glass on systems before Liquid Glass.
+    static func glassEdge(for scheme: ColorScheme) -> Color {
+        scheme == .dark ? Color.white.opacity(0.14) : Color.white.opacity(0.65)
+    }
+
+    /// The soft selection lens inside a glass group (no edge).
+    static func lens(for scheme: ColorScheme) -> Color {
+        scheme == .dark ? Color.white.opacity(0.14) : Color.black.opacity(0.07)
+    }
+
+    /// Sidebar row selection, as on Windows.
+    static func sidebarSelection(for scheme: ColorScheme) -> Color {
+        scheme == .dark ? Color.white.opacity(0.10) : Color.black.opacity(0.06)
+    }
 }

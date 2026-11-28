@@ -228,6 +228,8 @@ struct AIProviderSettingsView: View {
             modelSection
         }
         .formStyle(.grouped)
+        // The groups sit on the sheet or window glass, with no opaque paint behind them.
+        .scrollContentBackground(.hidden)
         .navigationTitle("AI Providers")
         .onAppear { manualModel = settings.model }
         .onChange(of: settings.providerID) { _, _ in manualModel = settings.model }
@@ -255,7 +257,7 @@ struct AIProviderSettingsView: View {
                     }
                 }
             } label: {
-                Label("Provider", systemImage: "cpu")
+                SettingsRowLabel("Provider", symbol: "cpu", color: .purple)
             }
             .pickerStyle(.menu)
             .accessibilityIdentifier("ai-provider-picker")
@@ -280,7 +282,7 @@ struct AIProviderSettingsView: View {
                         .foregroundStyle(.green)
                         .accessibilityIdentifier("ai-key-saved")
                 } label: {
-                    Label("API key", systemImage: "key")
+                    SettingsRowLabel("API key", symbol: "key.fill", color: .gray)
                 }
             }
             SecureField(settings.hasKey ? LocalizedStringKey("Replace the saved key") : LocalizedStringKey("Paste your API key"), text: $settings.keyDraft)
@@ -297,16 +299,17 @@ struct AIProviderSettingsView: View {
                     Button(role: .destructive) { settings.removeKey() } label: {
                         Label("Remove key", systemImage: "trash")
                     }
+                    .worldsGlassButton()
                     .accessibilityIdentifier("ai-key-remove")
                 }
                 Spacer()
                 Button { settings.saveKey() } label: {
                     Label("Save key", systemImage: "lock")
                 }
+                .worldsGlassButton(prominent: true)
                 .disabled(settings.keyDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 .accessibilityIdentifier("ai-key-save")
             }
-            .buttonStyle(.borderless)
             if let notice = settings.keyNotice { noticeView(notice) }
         } header: {
             Text("API key")
@@ -371,7 +374,7 @@ struct AIProviderSettingsView: View {
                         Text(verbatim: option.name == option.id ? option.id : "\(option.name) (\(option.id))").tag(option.id)
                     }
                 } label: {
-                    Label("Model", systemImage: "square.stack.3d.up")
+                    SettingsRowLabel("Model", symbol: "square.stack.3d.up.fill", color: .indigo)
                 }
                 .pickerStyle(.menu)
                 .accessibilityIdentifier("ai-model-picker")

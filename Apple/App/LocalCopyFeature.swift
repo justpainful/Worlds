@@ -57,7 +57,9 @@ struct LocalCopyNotice: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 16).padding(.vertical, 10)
-        .background(.regularMaterial)
+        // A floating glass notice above the content, not a full width bar.
+        .worldsFloatingGlass(in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .padding(.horizontal, 12).padding(.bottom, 8)
         .accessibilityElement(children: .combine)
         .accessibilityHint("Shared records may be present, but shared projects cannot be edited here.")
         .accessibilityIdentifier("local-copy-notice")
@@ -74,7 +76,9 @@ struct WorkspaceReadOnlyNotice: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 16).padding(.vertical, 10)
-        .background(.regularMaterial)
+        // A floating glass notice above the content, not a full width bar.
+        .worldsFloatingGlass(in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .padding(.horizontal, 12).padding(.bottom, 8)
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("workspace-read-only-notice")
     }
@@ -141,6 +145,7 @@ struct LocalCopyPicker: View {
                 }
             }
             .navigationTitle("Local copies")
+            .worldsSheetGlass()
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() }.disabled(opening) } }
             .interactiveDismissDisabled(opening)
             .task {

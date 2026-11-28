@@ -119,25 +119,83 @@ public struct ConversationView: View {
                     .accessibilityIdentifier("conversation-fixture-reference-editor")
             }
             #endif
-            TextEditor(text: $model.draft)
-                .frame(minHeight: 64, maxHeight: 140)
-                .accessibilityLabel("Message")
-                .disabled(model.running || model.loading)
-            HStack {
-                Spacer()
-                if model.running {
-                    Button { Task { await model.stop() } } label: { Label("Stop", systemImage: "stop.fill") }
-                        .disabled(model.stopping)
-                } else {
-                    Button { Task { await model.send() } } label: { Label("Send", systemImage: "arrow.up") }
-                        .disabled(!model.loaded || model.loading || model.canRetrySave || model.retryingSave || model.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            // One floating piece of glass: the plain message box and a round send button
+            // on its trailing edge. A capsule while the message is one line, 22 pt corners
+            // when it grows.
+            AIGlassGroup(spacing: 8) {
+                HStack(alignment: .bottom, spacing: 8) {
+                    messageBox
+                    composerAction
                 }
+                .padding(.leading, 12)
+                .padding(.trailing, 6)
+                .padding(.vertical, 6)
+                .aiFloatingGlass(cornerRadius: 22)
             }
         }
-        .padding(12)
+        .padding(.horizontal, 12)
+        .padding(.top, 6)
+        .padding(.bottom, 12)
         .frame(maxWidth: 760)
         .frame(maxWidth: .infinity)
-        .background(.regularMaterial)
+    }
+    /// The message box grows with its text up to six lines, then scrolls.
+    private var messageBox: some View {
+        Text(verbatim: model.draft + " ")
+            .font(.body)
+            .lineLimit(6)
+            .padding(.vertical, Self.editorVerticalInset)
+            .padding(.horizontal, 5)
+            .frame(maxWidth: .infinity, minHeight: 32, alignment: .topLeading)
+            .opacity(0)
+            .accessibilityHidden(true)
+            .overlay(alignment: .topLeading) {
+                if model.draft.isEmpty {
+                    Text("Message")
+                        .font(.body)
+                        .foregroundStyle(.secondary)
+                        .padding(.vertical, Self.editorVerticalInset)
+                        .padding(.horizontal, 5)
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+                }
+            }
+            .overlay {
+                TextEditor(text: $model.draft)
+                    .font(.body)
+                    .scrollContentBackground(.hidden)
+                    .accessibilityLabel("Message")
+                    .disabled(model.running || model.loading)
+            }
+    }
+    #if os(macOS)
+    private static let editorVerticalInset: CGFloat = 6
+    #else
+    private static let editorVerticalInset: CGFloat = 8
+    #endif
+    @ViewBuilder
+    private var composerAction: some View {
+        if model.running {
+            Button { Task { await model.stop() } } label: {
+                Label("Stop", systemImage: "stop.fill")
+                    .labelStyle(.iconOnly)
+                    .font(.body.weight(.semibold))
+                    .frame(width: 22, height: 22)
+            }
+            .aiRoundProminentButton()
+            .help("Stop")
+            .disabled(model.stopping)
+        } else {
+            Button { Task { await model.send() } } label: {
+                Label("Send", systemImage: "arrow.up")
+                    .labelStyle(.iconOnly)
+                    .font(.body.weight(.semibold))
+                    .frame(width: 22, height: 22)
+            }
+            .aiRoundProminentButton()
+            .help("Send")
+            .disabled(!model.loaded || model.loading || model.canRetrySave || model.retryingSave || model.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        }
     }
     /// Steps of a finished reply, folded behind a count, as on the desktop and Android.
     private func finishedSteps(_ steps: [ConversationTool]) -> some View {

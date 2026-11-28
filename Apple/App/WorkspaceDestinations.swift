@@ -29,40 +29,16 @@ struct SpacesDestinationView: View {
         VStack(spacing: 0) {
             if showSectionPicker {
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(availableSections) { sec in
-                            Button {
-                                selectedSection = sec
-                            } label: {
-                                Label(sec.rawValue, systemImage: sec.systemImage)
-                                    .font(.caption.weight(.semibold))
-                                    .lineLimit(1)
-                                    .fixedSize(horizontal: true, vertical: false)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 7)
-                                    .background(
-                                        selectedSection == sec
-                                            ? WorldsPalette.accent(for: colorScheme).opacity(0.18)
-                                            : WorldsPalette.cardBackground(for: colorScheme),
-                                        in: Capsule()
-                                    )
-                                    .overlay(
-                                        Capsule().strokeBorder(
-                                            selectedSection == sec ? WorldsPalette.accent(for: colorScheme).opacity(0.45) : WorldsPalette.subtleBorder(for: colorScheme),
-                                            lineWidth: 0.5
-                                        )
-                                    )
-                                    .foregroundStyle(selectedSection == sec ? WorldsPalette.accent(for: colorScheme) : .primary)
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityIdentifier("spaces-section-\(sec.rawValue)")
-                        }
-                    }
+                    WorldsGlassFilterBar(
+                        selection: $selectedSection,
+                        options: availableSections,
+                        title: { $0.rawValue },
+                        symbol: { $0.systemImage },
+                        identifier: { "spaces-section-\($0.rawValue)" }
+                    )
                     .padding(.horizontal, horizontalSizeClass == .compact ? 16 : 28)
                     .padding(.vertical, 10)
                 }
-                .background(WorldsPalette.groupedCanvas(for: colorScheme))
-                Divider()
             }
 
             if selectedSection == .study && studyPackEnabled {
@@ -73,7 +49,7 @@ struct SpacesDestinationView: View {
                 WorldsPlanningHubView(initialTab: mappedPlanningTab(selectedSection), showSubTabs: !showSectionPicker)
             }
         }
-        .background(WorldsPalette.groupedCanvas(for: colorScheme))
+        .worldsDestinationCanvas()
         .navigationTitle("Spaces")
         .accessibilityIdentifier("spaces-destination-view")
     }
@@ -117,40 +93,16 @@ struct LibraryDestinationView: View {
         VStack(spacing: 0) {
             if showCollectionPicker {
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(LibraryCollection.allCases) { col in
-                            Button {
-                                selectedCollection = col
-                            } label: {
-                                Label(col.rawValue, systemImage: col.systemImage)
-                                    .font(.caption.weight(.semibold))
-                                    .lineLimit(1)
-                                    .fixedSize(horizontal: true, vertical: false)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 7)
-                                    .background(
-                                        selectedCollection == col
-                                            ? WorldsPalette.accent(for: colorScheme).opacity(0.18)
-                                            : WorldsPalette.cardBackground(for: colorScheme),
-                                        in: Capsule()
-                                    )
-                                    .overlay(
-                                        Capsule().strokeBorder(
-                                            selectedCollection == col ? WorldsPalette.accent(for: colorScheme).opacity(0.45) : WorldsPalette.subtleBorder(for: colorScheme),
-                                            lineWidth: 0.5
-                                        )
-                                    )
-                                    .foregroundStyle(selectedCollection == col ? WorldsPalette.accent(for: colorScheme) : .primary)
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityIdentifier("library-filter-\(col.rawValue)")
-                        }
-                    }
+                    WorldsGlassFilterBar(
+                        selection: $selectedCollection,
+                        options: LibraryCollection.allCases,
+                        title: { $0.rawValue },
+                        symbol: { $0.systemImage },
+                        identifier: { "library-filter-\($0.rawValue)" }
+                    )
                     .padding(.horizontal, horizontalSizeClass == .compact ? 16 : 28)
                     .padding(.vertical, 10)
                 }
-                .background(WorldsPalette.groupedCanvas(for: colorScheme))
-                Divider()
             }
 
             switch selectedCollection {
@@ -169,7 +121,7 @@ struct LibraryDestinationView: View {
                     .frame(maxWidth: 1120, alignment: .leading)
                     .frame(maxWidth: .infinity)
                 }
-                .background(WorldsPalette.groupedCanvas(for: colorScheme))
+                .worldsDestinationCanvas()
             case .studio:
                 WorldsCreativeStudioView()
             case .templates:
@@ -193,7 +145,7 @@ struct LibraryDestinationView: View {
                     .frame(maxWidth: 1120, alignment: .leading)
                     .frame(maxWidth: .infinity)
                 }
-                .background(WorldsPalette.groupedCanvas(for: colorScheme))
+                .worldsDestinationCanvas()
             case .all:
                 allResourcesBrowser
             }
@@ -220,12 +172,16 @@ struct LibraryDestinationView: View {
                     Button {
                         selectedCollection = .templates
                     } label: {
-                        Label("Templates Gallery", systemImage: "square.grid.2x2")
-                            .font(.subheadline.weight(.medium))
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 10)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .worldsContentCard(cornerRadius: 10)
+                        HStack(spacing: 10) {
+                            WorldsIconTile("square.grid.2x2.fill", colors: [.indigo, .purple], size: 26)
+                            Text("Templates Gallery")
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(WorldsPalette.ink(for: colorScheme))
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .worldsContentCard(cornerRadius: 16)
                     }
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("library-open-templates")
@@ -233,12 +189,16 @@ struct LibraryDestinationView: View {
                     Button {
                         selectedCollection = .trash
                     } label: {
-                        Label("Trash (\(trashCount))", systemImage: "trash")
-                            .font(.subheadline.weight(.medium))
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 10)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .worldsContentCard(cornerRadius: 10)
+                        HStack(spacing: 10) {
+                            WorldsIconTile("trash.fill", color: .gray, size: 26)
+                            Text("Trash (\(trashCount))")
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(WorldsPalette.ink(for: colorScheme))
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .worldsContentCard(cornerRadius: 16)
                     }
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("library-open-trash")
@@ -249,7 +209,7 @@ struct LibraryDestinationView: View {
             .frame(maxWidth: 1120, alignment: .leading)
             .frame(maxWidth: .infinity)
         }
-        .background(WorldsPalette.groupedCanvas(for: colorScheme))
+        .worldsDestinationCanvas()
     }
 
     private func collectionShortcutCard(title: String, count: Int, icon: String, color: Color, collection: LibraryCollection) -> some View {
@@ -257,11 +217,7 @@ struct LibraryDestinationView: View {
             selectedCollection = collection
         } label: {
             HStack(spacing: 12) {
-                Image(systemName: icon)
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(color)
-                    .frame(width: 32, height: 32)
-                    .background(color.opacity(0.14), in: RoundedRectangle(cornerRadius: 8))
+                WorldsIconTile(icon, color: color, size: 32)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
@@ -274,11 +230,11 @@ struct LibraryDestinationView: View {
                 }
                 Spacer()
             }
-            .padding(12)
-            .worldsContentCard(cornerRadius: 11)
+            .padding(14)
+            .worldsContentCard(cornerRadius: 16)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(HomeCardButtonStyle())
         .accessibilityIdentifier("library-card-\(collection.rawValue)")
     }
 
@@ -289,7 +245,7 @@ struct LibraryDestinationView: View {
         }
         return VStack(alignment: .leading, spacing: 10) {
             Text(kinds == nil ? "All Workspace Documents" : "Matching Files")
-                .font(.headline)
+                .font(.title3.weight(.semibold))
                 .foregroundStyle(WorldsPalette.ink(for: colorScheme))
 
             if items.isEmpty {
@@ -300,12 +256,12 @@ struct LibraryDestinationView: View {
                     Spacer()
                     if let onOpenCreateSheet {
                         Button("Create New", action: onOpenCreateSheet)
-                            .buttonStyle(.bordered)
+                            .worldsGlassButton()
                             .controlSize(.small)
                     }
                 }
-                .padding(14)
-                .worldsContentCard(cornerRadius: 11)
+                .padding(16)
+                .worldsContentCard(cornerRadius: 16)
             } else {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: horizontalSizeClass == .compact ? 260 : 300, maximum: 540), spacing: 12)], spacing: 12) {
                     ForEach(items) { item in
@@ -314,9 +270,10 @@ struct LibraryDestinationView: View {
                         } label: {
                             HStack(spacing: 12) {
                                 Image(systemName: iconForKind(item.kind))
+                                    .font(.callout.weight(.semibold))
                                     .foregroundStyle(WorldsPalette.accent(for: colorScheme))
                                     .frame(width: 30, height: 30)
-                                    .background(WorldsPalette.accent(for: colorScheme).opacity(0.14), in: RoundedRectangle(cornerRadius: 8))
+                                    .background(WorldsPalette.accent(for: colorScheme).opacity(0.12), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(item.title.isEmpty ? String(localized: "Untitled") : item.title)
                                         .font(.subheadline.weight(.semibold))
@@ -332,12 +289,12 @@ struct LibraryDestinationView: View {
                                     .font(.caption2)
                                     .foregroundStyle(.tertiary)
                             }
-                            .padding(12)
+                            .padding(14)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .worldsContentCard(cornerRadius: 11)
+                            .worldsContentCard(cornerRadius: 16)
                             .contentShape(Rectangle())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(HomeCardButtonStyle())
                         .accessibilityIdentifier("library-item-\(item.id)")
                     }
                 }
@@ -385,20 +342,24 @@ struct SearchDestinationView: View {
             if searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 Section("Quick Filters") {
                     ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            ForEach(["Budget", "Mind Map", "OKR", "CS-301", "CAD", "Deck"], id: \.self) { chip in
-                                Button {
-                                    searchQuery = chip
-                                } label: {
-                                    Text(chip)
-                                        .font(.caption.weight(.medium))
-                                        .padding(.horizontal, 10)
-                                        .padding(.vertical, 5)
-                                        .background(WorldsPalette.accent(for: colorScheme).opacity(0.14), in: Capsule())
-                                        .foregroundStyle(WorldsPalette.accent(for: colorScheme))
+                        WorldsGlassChromeGroup(spacing: 8) {
+                            HStack(spacing: 8) {
+                                ForEach(["Budget", "Mind Map", "OKR", "CS-301", "CAD", "Deck"], id: \.self) { chip in
+                                    Button {
+                                        withAnimation(WorldsMotion.selection) { searchQuery = chip }
+                                    } label: {
+                                        Label(chip, systemImage: "magnifyingglass")
+                                            .font(.callout)
+                                            .lineLimit(1)
+                                            .fixedSize()
+                                            .padding(.horizontal, 12)
+                                            .padding(.vertical, 6)
+                                            .worldsGlassCapsule()
+                                    }
+                                    .buttonStyle(.plain)
                                 }
-                                .buttonStyle(.plain)
                             }
+                            .padding(.vertical, 4)
                         }
                     }
                 }
@@ -432,5 +393,77 @@ struct SearchDestinationView: View {
         .searchable(text: $searchQuery, prompt: "Search pages, sheets, mind maps, OKRs…")
         .navigationTitle("Search")
         .accessibilityIdentifier("search-destination-view")
+    }
+}
+
+// MARK: - Shared destination chrome
+
+/// Labelled choices on one glass track with a sliding lens (section and filter pickers).
+/// The lens has no edge; the track is the only piece of glass.
+struct WorldsGlassFilterBar<Value: Hashable>: View {
+    @Binding var selection: Value
+    let options: [Value]
+    let title: (Value) -> String
+    let symbol: (Value) -> String?
+    let identifier: (Value) -> String
+    @Namespace private var lens
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(options, id: \.self) { option in
+                let isSelected = option == selection
+                Button {
+                    withAnimation(WorldsMotion.spring) { selection = option }
+                } label: {
+                    HStack(spacing: 6) {
+                        if let name = symbol(option) {
+                            Image(systemName: name)
+                        }
+                        Text(LocalizedStringKey(title(option)))
+                    }
+                    .font(.callout.weight(.medium))
+                    .lineLimit(1)
+                    .fixedSize()
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
+                    .contentShape(Capsule())
+                    .background {
+                        if isSelected {
+                            Capsule()
+                                .fill(WorldsPalette.lens(for: colorScheme))
+                                .matchedGeometryEffect(id: "lens", in: lens)
+                        }
+                    }
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(isSelected ? Color.primary : Color.secondary)
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
+                .accessibilityIdentifier(identifier(option))
+            }
+        }
+        .padding(3)
+        .worldsGlassCapsule(interactive: false)
+    }
+}
+
+extension View {
+    /// The canvas behind a destination: on macOS the shell's content panel shows through,
+    /// on iOS a quiet grouped colour keeps cards readable.
+    @ViewBuilder
+    func worldsDestinationCanvas() -> some View {
+        #if os(iOS)
+        modifier(WorldsDestinationCanvasModifier())
+        #else
+        self
+        #endif
+    }
+}
+
+private struct WorldsDestinationCanvasModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+
+    func body(content: Content) -> some View {
+        content.background(WorldsPalette.groupedCanvas(for: colorScheme))
     }
 }

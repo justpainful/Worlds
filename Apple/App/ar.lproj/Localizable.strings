@@ -882,3 +882,13 @@
 "Worlds is under maintenance." = "Worlds قيد الصيانة.";
 "Worlds is under maintenance. Sharing and syncing are read only for now." = "Worlds قيد الصيانة. المشاركة والمزامنة للقراءة فقط حاليًا.";
 "Worlds %@ is ready. Update to keep everything working." = "Worlds %@ جاهز. حدّث التطبيق ليبقى كل شيء يعمل.";
+"Good morning" = "صباح الخير";
+"Good afternoon" = "مساء الخير";
+"Good evening" = "مساء الخير";
+"Pinned" = "المثبّتة";
+"Recent" = "الأخيرة";
+"Grid" = "شبكة";
+"List" = "قائمة";
+"No results" = "لا توجد نتائج";
+"Just now" = "الآن";
+"SWOT Canvas" = "لوحة SWOT";

@@ -23,8 +23,8 @@ struct ServiceNoticesView: View {
         VStack(spacing: 8) {
             ForEach(notices) { notice in
                 HStack(spacing: 10) {
-                    Image(systemName: notice.warning ? "exclamationmark.triangle" : "megaphone")
-                        .foregroundStyle(notice.warning ? Color.orange : Color.accentColor)
+                    WorldsIconTile(notice.warning ? "exclamationmark.triangle.fill" : "megaphone.fill",
+                                   color: notice.warning ? Color.orange : Color.accentColor, size: 24)
                     Text(notice.text).font(.callout).frame(maxWidth: .infinity, alignment: .leading)
                     if let link = notice.link {
                         Button(notice.linkLabel) { openURL(link) }.buttonStyle(.borderless)
@@ -36,7 +36,7 @@ struct ServiceNoticesView: View {
                     }
                 }
                 .padding(.horizontal, 14).padding(.vertical, 10)
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .worldsFloatingGlass(in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                 .frame(maxWidth: 560)
             }
         }

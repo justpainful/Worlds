@@ -49,16 +49,20 @@ struct LocalRenamePageView: View {
                     .accessibilityIdentifier("rename-personal-page-title")
                 if dirty && !uncertain {
                     Button("Reset draft") { title = baseline.title; message = nil }
+                        .worldsGlassButton()
                         .disabled(busy).accessibilityIdentifier("rename-reset-draft")
                 }
                 if let previousName, !dirty && !uncertain {
                     Button("Restore previous name") { Task { await commit(previousName, restoring: true) } }
+                        .worldsGlassButton()
                         .disabled(busy).accessibilityIdentifier("rename-undo")
                 }
                 if let message { Text(message).accessibilityIdentifier("rename-status") }
                 if busy { ProgressView("Saving name") }
             }
             .navigationTitle("Rename page")
+            .formStyle(.grouped)
+            .worldsSheetGlass()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") { if dirty { confirmDiscard = true } else { dismiss() } }.disabled(busy)

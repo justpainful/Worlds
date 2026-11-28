@@ -80,7 +80,7 @@ final class WorldsHotCornersCoordinator: ObservableObject {
         let action = HotCornerAction(rawValue: actionRaw) ?? .none
         switch action {
         case .quickNote:
-            withAnimation(.spring(duration: 0.25)) { showingQuickNote = true }
+            withAnimation(WorldsMotion.spring) { showingQuickNote = true }
         case .assistant:
             onTriggerAssistant?()
         case .focusTimer:
@@ -92,7 +92,7 @@ final class WorldsHotCornersCoordinator: ObservableObject {
     #endif
 
     func openQuickNote() {
-        withAnimation(.spring(duration: 0.25)) {
+        withAnimation(WorldsMotion.spring) {
             showingQuickNote = true
         }
     }
@@ -102,7 +102,7 @@ final class WorldsHotCornersCoordinator: ObservableObject {
         guard !trimmed.isEmpty else { return }
         onSaveQuickNote?(trimmed)
         quickNoteDraft = ""
-        withAnimation(.easeOut(duration: 0.2)) {
+        withAnimation(WorldsMotion.popover) {
             showingQuickNote = false
         }
     }
@@ -121,7 +121,7 @@ struct HotCornerQuickNoteHUD: View {
                     .foregroundStyle(WorldsPalette.accent(for: colorScheme))
                 Spacer()
                 Button {
-                    withAnimation(.easeOut(duration: 0.18)) {
+                    withAnimation(WorldsMotion.popover) {
                         coordinator.showingQuickNote = false
                     }
                 } label: {
@@ -146,7 +146,7 @@ struct HotCornerQuickNoteHUD: View {
                     .frame(height: 88)
                     .padding(8)
             }
-            .background(WorldsPalette.cardBackground(for: colorScheme).opacity(0.6), in: RoundedRectangle(cornerRadius: 8))
+            .background(WorldsPalette.cardBackground(for: colorScheme).opacity(0.6), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
 
             HStack {
                 Text("⌥Space or Bottom-Right Corner")
@@ -156,7 +156,7 @@ struct HotCornerQuickNoteHUD: View {
                 Button("Save to Inbox") {
                     coordinator.saveDraft()
                 }
-                .buttonStyle(.borderedProminent)
+                .worldsGlassButton(prominent: true)
                 .tint(WorldsPalette.accent(for: colorScheme))
                 .controlSize(.small)
                 .disabled(coordinator.quickNoteDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -164,8 +164,8 @@ struct HotCornerQuickNoteHUD: View {
         }
         .padding(14)
         .frame(width: 320)
+        // One piece of glass: the material carries its own soft shadow, so no extra shadow band.
         .worldsFloatingGlass(in: RoundedRectangle(cornerRadius: 16, style: .continuous), interactive: true)
-        .shadow(color: .black.opacity(0.28), radius: 18, y: 8)
         .padding(20)
         .accessibilityIdentifier("hot-corner-quick-note-hud")
     }

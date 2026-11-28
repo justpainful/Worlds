@@ -140,7 +140,7 @@ struct SavedSharedPageView: View {
                     Label { Text("Saved copy from \(savedAt.formatted(date: .abbreviated, time: .shortened))") } icon: { Image(systemName: "arrow.down.doc") }
                         .font(.caption.weight(.semibold))
                         .padding(.horizontal, 10).padding(.vertical, 5)
-                        .background(.thinMaterial, in: Capsule())
+                        .worldsGlassCapsule(interactive: false)
                 }
                 if unsent > 0 {
                     Label("Your change is saved on this device and is sent when the page is connected.", systemImage: "arrow.up.circle")
@@ -393,7 +393,7 @@ struct SharedPageView: View {
             }
             .font(.caption.weight(.semibold))
             .padding(.horizontal, 10).padding(.vertical, 5)
-            .background(.thinMaterial, in: Capsule())
+            .worldsGlassCapsule(interactive: false)
             switch model.phase {
             case .opening:
                 ProgressView().controlSize(.small)
@@ -652,7 +652,7 @@ struct SharedPackFieldsCard: View {
                         if index < card.rows.count - 1 { Divider().padding(.leading, 14) }
                     }
                 }
-                .background(.background.secondary, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .worldsContentCard(cornerRadius: 16)
             }
         }
         .accessibilityIdentifier("shared-pack-fields")
