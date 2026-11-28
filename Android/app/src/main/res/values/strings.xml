@@ -1185,4 +1185,9 @@
     <string name="service_usage_text">Once a day Worlds can send counts: how many pages, the version and language. Never titles, text or files. You can change this in Account, Help and feedback.</string>
     <string name="service_usage_no">Not now</string>
     <string name="service_usage_yes">Send counts</string>
+    <string name="whats_new_title">What\'s New</string>
+    <string name="whats_new_hint">Highlights of Worlds %1$s</string>
+    <string name="whats_new_version">Worlds %1$s</string>
+    <string name="whats_new_continue">Continue</string>
+    <string name="whats_new_every_change">Every Change</string>
 </resources>

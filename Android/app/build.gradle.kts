@@ -71,8 +71,31 @@ val htmlPageAssets = tasks.register<HtmlPageAssets>("htmlPageAssets") {
     outputDir.set(layout.buildDirectory.dir("generated/htmlpage-assets"))
 }
 
+/**
+ * "What's new" (WhatsNew.kt) reads this version's notes from the same changelog
+ * file the desktop app bundles: web/changelog/releases/<versionName>.txt.
+ */
+abstract class ReleaseNotesAssets : DefaultTask() {
+    @get:InputFiles @get:PathSensitive(PathSensitivity.NAME_ONLY) abstract val sources: ConfigurableFileCollection
+    @get:OutputDirectory abstract val outputDir: DirectoryProperty
+    @TaskAction fun copy() {
+        val target = outputDir.get().asFile.resolve("release-notes")
+        target.deleteRecursively(); target.mkdirs()
+        sources.files.filter { it.isFile }.forEach { it.copyTo(target.resolve(it.name), overwrite = true) }
+    }
+}
+val releaseNotesAssets = tasks.register<ReleaseNotesAssets>("releaseNotesAssets") {
+    val repo = rootProject.layout.projectDirectory.dir("..")
+    val version = android.defaultConfig.versionName
+    sources.from(repo.dir("web/changelog/releases").asFileTree.matching { include("$version.txt") })
+    outputDir.set(layout.buildDirectory.dir("generated/release-notes-assets"))
+}
+
 androidComponents {
-    onVariants { variant -> variant.sources.assets?.addGeneratedSourceDirectory(htmlPageAssets, HtmlPageAssets::outputDir) }
+    onVariants { variant ->
+        variant.sources.assets?.addGeneratedSourceDirectory(htmlPageAssets, HtmlPageAssets::outputDir)
+        variant.sources.assets?.addGeneratedSourceDirectory(releaseNotesAssets, ReleaseNotesAssets::outputDir)
+    }
     beforeVariants { variantBuilder ->
         try {
             variantBuilder::class.java.getMethod("setEnableUnitTest", Boolean::class.javaPrimitiveType).invoke(variantBuilder, true)

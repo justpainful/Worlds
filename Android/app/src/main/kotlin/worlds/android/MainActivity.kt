@@ -122,6 +122,8 @@ class MainActivity : ComponentActivity() {
                 val home by model.state.collectAsStateWithLifecycle()
                 val signedIn by account.state.collectAsStateWithLifecycle()
                 ServiceNotices(signedIn.server, home.pages.size, androidx.compose.ui.Modifier.align(androidx.compose.ui.Alignment.BottomCenter))
+                // This version's highlights once after an update, and again from Settings (WhatsNew.kt).
+                WhatsNew()
             }
         } }
     }
