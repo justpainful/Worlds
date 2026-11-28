@@ -1189,4 +1189,9 @@
     <string name="service_usage_text">يستطيع Worlds أن يرسل مرة في اليوم أعدادًا فقط: عدد الصفحات والنسخة واللغة. لا يرسل أبدًا العناوين أو النصوص أو الملفات. يمكنك تغيير ذلك من الحساب، المساعدة والملاحظات.</string>
     <string name="service_usage_no">لا ترسل</string>
     <string name="service_usage_yes">أرسل الأعداد</string>
+    <string name="whats_new_title">ما الجديد</string>
+    <string name="whats_new_hint">أبرز ما في Worlds %1$s</string>
+    <string name="whats_new_version">Worlds %1$s</string>
+    <string name="whats_new_continue">متابعة</string>
+    <string name="whats_new_every_change">كل التغييرات</string>
 </resources>

@@ -94,6 +94,7 @@ internal val LocalAppearancePreferences = staticCompositionLocalOf { AppearanceP
         }
         Text(stringResource(R.string.appearance_local_note), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
         if (failed) Text(stringResource(R.string.appearance_save_error), color = MaterialTheme.colorScheme.error)
+        WhatsNewSettingsRow()
         Text(stringResource(R.string.appearance_theme), color = MaterialTheme.colorScheme.onBackground, style = MaterialTheme.typography.titleSmall)
         Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface, modifier = Modifier.widthIn(max = 600.dp).fillMaxWidth()) {
             Column(Modifier.selectableGroup()) {
