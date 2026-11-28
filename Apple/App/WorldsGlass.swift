@@ -273,12 +273,14 @@ struct WorldsGlassChoice<Value: Hashable>: View {
                 Button {
                     withAnimation(WorldsMotion.spring) { selection = option.value }
                 } label: {
-                    HStack(spacing: 6) {
+                    HStack(spacing: 5) {
                         Image(systemName: option.symbol)
                         if showsLabels { Text(option.label) }
                     }
                     .font(.callout.weight(.medium))
-                    .padding(.horizontal, showsLabels ? 12 : 10)
+                    .lineLimit(1)
+                    .fixedSize()
+                    .padding(.horizontal, showsLabels ? 10 : 10)
                     .padding(.vertical, 7)
                     .contentShape(Capsule())
                     .background {

@@ -126,7 +126,7 @@ struct HomeView: View {
         WorldsGlassChromeGroup(spacing: 10) {
             HStack(spacing: 10) {
                 WorldsGlassSearchField(text: $query, prompt: String(localized: "Search"), shortcut: searchShortcut)
-                    .frame(minWidth: 120, maxWidth: 320)
+                    .frame(minWidth: 120, maxWidth: isCompact ? .infinity : 320)
                     .accessibilityIdentifier("home-search-field")
 
                 WorldsGlassChoice(
@@ -139,7 +139,10 @@ struct HomeView: View {
                 .fixedSize()
                 .accessibilityIdentifier("home-layout-choice")
 
-                newButton(showsLabel: newShowsLabel)
+                // On iPhone the glass capsule at the top already has New; one is enough.
+                if !isCompact {
+                    newButton(showsLabel: newShowsLabel)
+                }
             }
         }
     }
