@@ -12,6 +12,8 @@ interface Settings {
   minVersion: Record<string, { version: string; dismissible: boolean }>;
   publishing: { paused: boolean };
   incident: { on: boolean; title: L; body: L; startedAt: number | null; updates: { at: number; text: L }[] };
+  retention: { auditMonths: number; closedTicketMonths: number };
+  keys: { signingRotatedAt: number | null; resendRotatedAt: number | null };
 }
 interface ControlData {
   settings: Settings;
@@ -73,6 +75,8 @@ export function Control() {
           <Section title={t("publishingTitle")} note={t("publishingLead")}>
             <Row icon="text.document" label={t("pausePublishing")} trailing={<Switch checked={s.publishing.paused} disabled={!write} label={t("pausePublishing")} onChange={(v) => save("publishing", { paused: v })} />} />
           </Section>
+          <Retention s={s} write={write} save={save} />
+          <Keys s={s} write={write} save={save} />
         </div>
         <div>
           <MinVersions s={s} write={write} save={save} />
@@ -213,6 +217,67 @@ function Incident({ s, write, save }: { s: Settings; write: boolean; save: Save 
               {t("startIncident")}
             </Button>
           )}
+        </div>
+      )}
+    </Section>
+  );
+}
+
+/** How long the security log and closed requests are kept; the daily sweep reads it. */
+function Retention({ s, write, save }: { s: Settings; write: boolean; save: Save }) {
+  const [audit, setAudit] = useState(String(s.retention.auditMonths));
+  const [tickets, setTickets] = useState(String(s.retention.closedTicketMonths));
+  useEffect(() => (setAudit(String(s.retention.auditMonths)), setTickets(String(s.retention.closedTicketMonths))), [s.retention]);
+  const ok = (v: string) => /^\d+$/.test(v) && Number(v) >= 1 && Number(v) <= 120;
+  const months = (label: string, v: string, set: (v: string) => void) => (
+    <span className="row-controls">
+      <input className="input compact mono" type="number" inputMode="numeric" dir="ltr" min={1} max={120} step={1} aria-label={label} value={v} disabled={!write} onChange={(e) => set(e.target.value)} />
+      <span className="row-sub">{t("months")}</span>
+    </span>
+  );
+  return (
+    <Section title={t("keepTitle")} note={t("keepLead")}>
+      <Row icon="list.bullet.rectangle" label={t("keepAudit")} trailing={months(t("keepAudit"), audit, setAudit)} />
+      <Row icon="tray" label={t("keepTickets")} trailing={months(t("keepTickets"), tickets, setTickets)} />
+      {write && (
+        <div className="row row-end">
+          <Button variant="accent" icon="checkmark" disabled={!ok(audit) || !ok(tickets)} onClick={() => save("retention", { auditMonths: Number(audit), closedTicketMonths: Number(tickets) })}>
+            {t("save")}
+          </Button>
+        </div>
+      )}
+    </Section>
+  );
+}
+
+/** "YYYY-MM-DD" for a date input, in UTC like the values it saves. */
+const dayText = (ms: number | null) => (ms ? new Date(ms).toISOString().slice(0, 10) : "");
+const dayMs = (v: string): number | null => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
+  return m ? Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : null;
+};
+
+/** When the owner last replaced the keys; only the dates, never the keys. The overview reminds after 6 months. */
+function Keys({ s, write, save }: { s: Settings; write: boolean; save: Save }) {
+  const [signing, setSigning] = useState(dayText(s.keys.signingRotatedAt));
+  const [resend, setResend] = useState(dayText(s.keys.resendRotatedAt));
+  useEffect(() => (setSigning(dayText(s.keys.signingRotatedAt)), setResend(dayText(s.keys.resendRotatedAt))), [s.keys]);
+  const today = new Date().toISOString().slice(0, 10);
+  const date = (label: string, v: string, set: (v: string) => void) => (
+    <input className="input compact" type="date" dir="ltr" max={today} aria-label={label} value={v} disabled={!write} onChange={(e) => set(e.target.value)} />
+  );
+  return (
+    <Section title={t("keysTitle")} note={t("keysLead")}>
+      <Row icon="key" label={t("keySigning")} sub={s.keys.signingRotatedAt ? ago(s.keys.signingRotatedAt) : t("keyNotNoted")} trailing={date(t("keySigning"), signing, setSigning)} />
+      <Row icon="envelope" label={t("keyResend")} sub={s.keys.resendRotatedAt ? ago(s.keys.resendRotatedAt) : t("keyNotNoted")} trailing={date(t("keyResend"), resend, setResend)} />
+      {write && (
+        <div className="row row-end">
+          <Button icon="calendar" onClick={() => (setSigning(today), setResend(today))}>
+            {t("keysToday")}
+          </Button>
+          <Button variant="accent" icon="checkmark" onClick={() => save("keys", { signingRotatedAt: dayMs(signing), resendRotatedAt: dayMs(resend) })}>
+            {t("save")}
+          </Button>
         </div>
       )}
     </Section>

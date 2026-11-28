@@ -1,6 +1,7 @@
 import { call, type Stats } from "../api";
+import { go } from "../App";
 import { fmtDate, fmtNum, fmtTime, t } from "../i18n";
-import { IconButton, Row, Section } from "../ui";
+import { Chip, IconButton, Row, Section } from "../ui";
 import type { SymbolName } from "../symbols";
 import { Failed, Loading, Toolbar, useLoad } from "./common";
 
@@ -47,6 +48,7 @@ function Body({ s }: { s: Stats }) {
   return (
     <div className="page grid-2">
       <div>
+        {s.keys && (s.keys.signingDue || s.keys.resendDue) && <KeyReminder k={s.keys} />}
         <Section title={t("accountsGroup")}>
           <Row icon="person.2" label={t("allAccounts")} value={n(s.users.total)} />
           <Row icon="calendar" label={t("newDay")} value={n(s.signups.day)} />
@@ -84,6 +86,17 @@ function Body({ s }: { s: Stats }) {
         </Section>
       </div>
     </div>
+  );
+}
+
+/** The session signing key or the Resend key was replaced more than 6 months ago, or never noted. */
+function KeyReminder({ k }: { k: NonNullable<Stats["keys"]> }) {
+  const sub = (at: number | null) => (at ? t("keyRotatedOn", { date: fmtDate(at) }) : t("keyNotNoted"));
+  return (
+    <Section title={t("keysTitle")} note={t("keysReminderLead")}>
+      {k.signingDue && <Row icon="key" label={t("keySigning")} sub={sub(k.signingRotatedAt)} trailing={<Chip tone="warning">{t("keyDue")}</Chip>} onClick={() => go("control")} />}
+      {k.resendDue && <Row icon="envelope" label={t("keyResend")} sub={sub(k.resendRotatedAt)} trailing={<Chip tone="warning">{t("keyDue")}</Chip>} onClick={() => go("control")} />}
+    </Section>
   );
 }
 

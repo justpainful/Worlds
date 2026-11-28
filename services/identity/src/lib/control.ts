@@ -15,6 +15,13 @@ export interface Settings {
   incident: { on: boolean; title: { ar: string; en: string }; body: { ar: string; en: string }; startedAt: number | null; updates: { at: number; text: { ar: string; en: string } }[] };
   /** The download links (routes/downloads.ts): a release everyone gets instead of the newest, and files taken off. */
   downloads: { pinnedTag: string | null; pulled: { name: string; reason: string; at: number; by: string }[] };
+  /** How long the security log and closed support requests are kept, in months (lib/retention.ts). */
+  retention: { auditMonths: number; closedTicketMonths: number };
+  /**
+   * When the owner last replaced the session signing key (JWT_PRIVATE_JWK) and
+   * the Resend key, as the owner set them. Only the dates; never the keys.
+   */
+  keys: { signingRotatedAt: number | null; resendRotatedAt: number | null };
 }
 
 export const DEFAULTS: Settings = {
@@ -24,7 +31,14 @@ export const DEFAULTS: Settings = {
   publishing: { paused: false },
   incident: { on: false, title: { ar: "", en: "" }, body: { ar: "", en: "" }, startedAt: null, updates: [] },
   downloads: { pinnedTag: null, pulled: [] },
+  retention: { auditMonths: 12, closedTicketMonths: 24 },
+  keys: { signingRotatedAt: null, resendRotatedAt: null },
 };
+
+/** The longest a retention period may be set to, in months. */
+export const MAX_RETENTION_MONTHS = 120;
+/** Keys older than this get a reminder on the overview. */
+export const KEY_ROTATION_MS = 182 * 86_400_000;
 
 export type SettingKey = keyof Settings;
 export const SETTING_KEYS = Object.keys(DEFAULTS) as SettingKey[];

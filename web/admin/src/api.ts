@@ -105,6 +105,12 @@ export async function call<T = any>(method: string, path: string, body?: unknown
     return await raw<T>(method, path, body, token);
   } catch (e) {
     if (!(e instanceof ApiError) || e.status !== 401) throw e;
+    // The service ended this dashboard device after 15 minutes without a request.
+    if (e.code === "idle_locked") {
+      locked = { email: locked?.email ?? "" };
+      store(null);
+      throw e;
+    }
     // The access token was refused (the service changed keys, or the clock is off):
     // renew it once with the refresh token before giving up the session.
     const again = await fresh(true);
@@ -128,6 +134,8 @@ export async function callBlob(path: string): Promise<string> {
 // ---------------------------------------------------------------------------
 
 function keep(t: Session) {
+  locked = null;
+  markActive(Date.now(), true);
   store({ accessToken: t.accessToken, accessTokenExpiresAt: t.accessTokenExpiresAt, refreshToken: t.refreshToken, deviceId: t.deviceId, userId: t.userId });
 }
 
@@ -144,6 +152,44 @@ export async function passkeySignIn(): Promise<void> {
   const { challengeId, options } = await raw<{ challengeId: string; options: any }>("POST", "/auth/passkey/login/options", {});
   const response = await getCredential(options);
   keep(await raw<Session>("POST", "/auth/passkey/login/verify", { challengeId, response, device: DEVICE }));
+}
+
+// ---------------------------------------------------------------------------
+// Locking after 15 minutes without activity (docs/admin/PLAN.md, section 9).
+// The service also ends a dashboard device that makes no request for that long.
+// ---------------------------------------------------------------------------
+
+export const IDLE_MS = 15 * 60 * 1000;
+const ACTIVE_KEY = "worlds.admin.active";
+
+let locked: { email: string } | null = null;
+/** Set while the sign-in screen is the lock screen; the email fills the form. */
+export const lockedState = () => locked;
+
+/** Note activity for every tab of the dashboard; written at most every 15 seconds. */
+let lastWrite = 0;
+export function markActive(at = Date.now(), force = false) {
+  if (!force && at - lastWrite < 15_000) return;
+  lastWrite = at;
+  try {
+    localStorage.setItem(ACTIVE_KEY, String(at));
+  } catch {
+    // This tab still keeps its own time.
+  }
+}
+/** The last activity any tab noted, or 0. */
+export function lastActive(): number {
+  try {
+    return Number(localStorage.getItem(ACTIVE_KEY)) || 0;
+  } catch {
+    return 0;
+  }
+}
+
+/** Sign out and show the lock screen, which asks for the same sign-in as before. */
+export async function lock(email: string): Promise<void> {
+  locked = { email };
+  await signOut();
 }
 
 export async function signOut(): Promise<void> {
@@ -364,6 +410,8 @@ export interface Stats {
   workspaces: { total: number; shared: number };
   public: { profiles: number; pages: number; shares: number };
   passkeys: number;
+  /** Only for those who can change the settings: when the keys were last replaced, and which are due. */
+  keys: { signingRotatedAt: number | null; resendRotatedAt: number | null; signingDue: boolean; resendDue: boolean } | null;
 }
 
 export interface TeamMember {

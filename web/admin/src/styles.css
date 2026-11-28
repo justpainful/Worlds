@@ -1613,6 +1613,13 @@ input[type="search"]::-webkit-search-cancel-button {
 .version-row .input {
   width: 110px;
 }
+/* Months and dates at the trailing edge of a row (Control: retention and keys). */
+.input.compact {
+  width: 150px;
+}
+.input.compact[type="number"] {
+  width: 76px;
+}
 .check.small {
   margin-top: 0;
   font-size: var(--text-caption);
