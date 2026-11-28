@@ -31,8 +31,7 @@ public struct NativeEditorView: View {
             VStack(alignment: .leading, spacing: 8) {
                 NativeTextSurface(model: model)
                     .frame(minHeight: dynamicTypeSize.isAccessibilitySize ? 240 : 160)
-                formattingToolbar
-                listToolbar
+                formattingBar
                 if model.supportsDocumentFormatting && model.selectionIsInRootTable {
                     Button("Insert column after selection") { do { try model.insertTableColumnRight() } catch { model.report(error) } }
                         .accessibilityIdentifier("editor-insert-table-column")
@@ -127,77 +126,80 @@ public struct NativeEditorView: View {
             Button("Cancel", role: .cancel) {}
         } message: { Text("Select text and enter an HTTP, HTTPS, or email address.") }
     }
-    private var toolbarColumns: [GridItem] {
-        dynamicTypeSize.isAccessibilitySize ? [GridItem(.flexible())] : [GridItem(.adaptive(minimum: 100), spacing: 8)]
-    }
-    @ViewBuilder private var formattingToolbar: some View {
-        if dynamicTypeSize.isAccessibilitySize {
-            formattingGrid.accessibilityIdentifier("editor-format-toolbar")
-        } else {
-            ScrollView(.vertical) { formattingGrid }
-                .accessibilityIdentifier("editor-format-toolbar")
-                .scrollIndicators(.visible).frame(maxHeight: 120)
-        }
-    }
-    private var formattingGrid: some View {
-        LazyVGrid(columns: toolbarColumns, alignment: .leading, spacing: 8) {
-            Button("Undo") { model.undo() }.keyboardShortcut("z", modifiers: .command).disabled(!model.undoManager.canUndo)
-            Button("Redo") { model.redo() }.keyboardShortcut("z", modifiers: [.command, .shift]).disabled(!model.undoManager.canRedo)
-            Button("Bold") { format("bold") }.keyboardShortcut("b", modifiers: .command)
-            Button("Italic") { format("italic") }.keyboardShortcut("i", modifiers: .command)
-            Button("Underline") { format("underline") }.keyboardShortcut("u", modifiers: .command)
-            Button("Strikethrough") { format("strike") }.accessibilityIdentifier("editor-strikethrough")
-            Menu("Text style") {
-                Button("Paragraph") { heading(nil) }
-                Button("Heading 1") { heading(1) }
-                Button("Heading 2") { heading(2) }
-                Button("Heading 3") { heading(3) }
-            }.accessibilityIdentifier("editor-text-style")
-            if model.supportsDocumentFormatting {
-                Menu("Paragraph style") {
-                    Button("Normal") { paragraphStyle("normal") }
-                    Button("Title") { paragraphStyle("title") }
-                    Button("Subtitle") { paragraphStyle("subtitle") }
-                    Button("Caption") { paragraphStyle("caption") }
-                }.accessibilityIdentifier("editor-paragraph-style")
-                Menu("Alignment") {
-                    Button("Automatic") { align(nil) }
-                    Button("Left") { align("left") }
-                    Button("Center") { align("center") }
-                    Button("Right") { align("right") }
-                    Button("Justify") { align("justify") }
-                }.accessibilityIdentifier("editor-alignment")
-            }
-            Button("Link") {
-                guard model.selection.length > 0 else { model.report(NativeEditorError.unsupportedFormatting); return }
-                linkSelection = model.selection; linkSource = model.document.source; linkText = ""; showLink = true
-            }.accessibilityIdentifier("editor-link")
-            Button("Remove link") { do { try model.setLink(nil, selection: model.selection) } catch { model.report(error) } }
-                .accessibilityIdentifier("editor-remove-link")
-        }
-        .buttonStyle(.bordered).controlSize(.large)
-        .fixedSize(horizontal: false, vertical: true)
-        .disabled(model.nativeEditPending || model.saving)
-    }
-    @ViewBuilder private var listToolbar: some View {
-        if dynamicTypeSize.isAccessibilitySize {
-            listGrid.accessibilityIdentifier("editor-list-toolbar")
-        } else {
-            ScrollView(.vertical) { listGrid }
+    /// One floating glass bar, groups side by side: history, text styles, marks, lists, links.
+    /// Groups wrap onto a second row on narrow screens, so every action stays on screen.
+    private var formattingBar: some View {
+        NativeEditorGlassGroup(spacing: 8) {
+            NativeEditorFlowLayout(spacing: 10, lineSpacing: 4) {
+                HStack(spacing: 2) {
+                    Button("Undo", systemImage: "arrow.uturn.backward") { model.undo() }
+                        .keyboardShortcut("z", modifiers: .command).disabled(!model.undoManager.canUndo).help("Undo")
+                    Button("Redo", systemImage: "arrow.uturn.forward") { model.redo() }
+                        .keyboardShortcut("z", modifiers: [.command, .shift]).disabled(!model.undoManager.canRedo).help("Redo")
+                }
+                HStack(spacing: 2) {
+                    Menu {
+                        Button("Paragraph") { heading(nil) }
+                        Button("Heading 1") { heading(1) }
+                        Button("Heading 2") { heading(2) }
+                        Button("Heading 3") { heading(3) }
+                    } label: { Label("Text style", systemImage: "textformat.size") }
+                        .nativeEditorBarMenu().help("Text style")
+                        .accessibilityIdentifier("editor-text-style")
+                    if model.supportsDocumentFormatting {
+                        Menu {
+                            Button("Normal") { paragraphStyle("normal") }
+                            Button("Title") { paragraphStyle("title") }
+                            Button("Subtitle") { paragraphStyle("subtitle") }
+                            Button("Caption") { paragraphStyle("caption") }
+                        } label: { Label("Paragraph style", systemImage: "paragraphsign") }
+                            .nativeEditorBarMenu().help("Paragraph style")
+                            .accessibilityIdentifier("editor-paragraph-style")
+                        Menu {
+                            Button("Automatic") { align(nil) }
+                            Button("Left") { align("left") }
+                            Button("Center") { align("center") }
+                            Button("Right") { align("right") }
+                            Button("Justify") { align("justify") }
+                        } label: { Label("Alignment", systemImage: "text.alignleft") }
+                            .nativeEditorBarMenu().help("Alignment")
+                            .accessibilityIdentifier("editor-alignment")
+                    }
+                }
+                HStack(spacing: 2) {
+                    Button("Bold", systemImage: "bold") { format("bold") }.keyboardShortcut("b", modifiers: .command).help("Bold")
+                    Button("Italic", systemImage: "italic") { format("italic") }.keyboardShortcut("i", modifiers: .command).help("Italic")
+                    Button("Underline", systemImage: "underline") { format("underline") }.keyboardShortcut("u", modifiers: .command).help("Underline")
+                    Button("Strikethrough", systemImage: "strikethrough") { format("strike") }.help("Strikethrough")
+                        .accessibilityIdentifier("editor-strikethrough")
+                }
+                HStack(spacing: 2) {
+                    Button("Bullets", systemImage: "list.bullet") { list("bulletList") }.help("Bullets")
+                    Button("Numbered", systemImage: "list.number") { list("orderedList") }.help("Numbered")
+                    Button("Checklist", systemImage: "checklist") { list("taskList") }.help("Checklist")
+                    Button("Toggle task", systemImage: "checkmark.square") { do { try model.toggleTask() } catch { model.report(error) } }.help("Toggle task")
+                }
+                .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("editor-list-toolbar")
-                .scrollIndicators(.visible).frame(maxHeight: 100)
+                HStack(spacing: 2) {
+                    Button("Link", systemImage: "link.badge.plus") {
+                        guard model.selection.length > 0 else { model.report(NativeEditorError.unsupportedFormatting); return }
+                        linkSelection = model.selection; linkSource = model.document.source; linkText = ""; showLink = true
+                    }.help("Link").accessibilityIdentifier("editor-link")
+                    Button("Remove link", systemImage: "eraser") { do { try model.setLink(nil, selection: model.selection) } catch { model.report(error) } }
+                        .help("Remove link")
+                        .accessibilityIdentifier("editor-remove-link")
+                }
+            }
+            .buttonStyle(NativeEditorBarButtonStyle())
+            .padding(.horizontal, 6)
+            .padding(.vertical, 4)
+            .nativeEditorFloatingGlass(cornerRadius: NativeEditorBarMetrics.button / 2 + 4)
         }
-    }
-    private var listGrid: some View {
-        LazyVGrid(columns: toolbarColumns, alignment: .leading, spacing: 8) {
-            Button("Bullets") { list("bulletList") }
-            Button("Numbered") { list("orderedList") }
-            Button("Checklist") { list("taskList") }
-            Button("Toggle task") { do { try model.toggleTask() } catch { model.report(error) } }
-        }
-        .buttonStyle(.bordered).controlSize(.large)
         .fixedSize(horizontal: false, vertical: true)
         .disabled(model.nativeEditPending || model.saving)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("editor-format-toolbar")
     }
     private func format(_ mark: String) {
         do { try model.toggleMark(mark, selection: model.selection) }

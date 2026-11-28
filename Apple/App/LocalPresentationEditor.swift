@@ -443,27 +443,54 @@ struct LocalPresentationEditor: View {
                 if let selected = state.selected, selected.elements.contains(where: { $0.type != "text" }) {
                     Text("This slide contains elements that cannot be edited here.").accessibilityIdentifier("presentation-unsupported-elements")
                 }
-                Button("Add blank slide") { state.addBlankSlide() }.disabled(state.hasUnapplied || state.selected == nil).accessibilityIdentifier("presentation-add-blank")
-                Button("Duplicate slide") { state.duplicateSelectedSlide() }.disabled(state.hasUnapplied || state.selected == nil).accessibilityIdentifier("presentation-duplicate-slide")
-                Button("Move slide down") { state.moveDown() }.disabled(state.hasUnapplied || state.slides.last?.id == state.selectedID).accessibilityIdentifier("presentation-move-down")
-                Button("Move slide up") { state.moveUp() }.disabled(state.hasUnapplied || state.slides.first?.id == state.selectedID)
-                Button("Delete slide", role: .destructive) { deleteSlide = true }
-                    .accessibilityIdentifier("presentation-delete-slide")
-                    .disabled(state.hasUnapplied || state.slides.count <= 1)
+                // Slide actions float together in one glass capsule, as on the Windows slide toolbar.
+                HStack(spacing: 2) {
+                    Button { state.addBlankSlide() } label: { Label("Add blank slide", systemImage: "plus.rectangle") }
+                        .disabled(state.hasUnapplied || state.selected == nil).accessibilityIdentifier("presentation-add-blank")
+                    Button { state.duplicateSelectedSlide() } label: { Label("Duplicate slide", systemImage: "plus.rectangle.on.rectangle") }
+                        .disabled(state.hasUnapplied || state.selected == nil).accessibilityIdentifier("presentation-duplicate-slide")
+                    Button { state.moveDown() } label: { Label("Move slide down", systemImage: "arrow.down") }
+                        .disabled(state.hasUnapplied || state.slides.last?.id == state.selectedID).accessibilityIdentifier("presentation-move-down")
+                    Button { state.moveUp() } label: { Label("Move slide up", systemImage: "arrow.up") }
+                        .disabled(state.hasUnapplied || state.slides.first?.id == state.selectedID)
+                    Button(role: .destructive) { deleteSlide = true } label: { Label("Delete slide", systemImage: "trash") }
+                        .accessibilityIdentifier("presentation-delete-slide")
+                        .disabled(state.hasUnapplied || state.slides.count <= 1)
+                }
+                .buttonStyle(PresentationGlassToolStyle())
+                .padding(4)
+                .worldsGlassCapsule()
                 }
                 .disabled(state.elementReorderPending)
                 if state.elementReorderPending {
                     Text("Save or undo the element order before making other changes.")
                 }
-                Button("Bring text forward") { state.reorderText(forward: true) }
-                    .disabled(!state.canReorderText(forward: true)).accessibilityIdentifier("presentation-element-forward")
-                Button("Send text backward") { state.reorderText(forward: false) }
-                    .disabled(!state.canReorderText(forward: false)).accessibilityIdentifier("presentation-element-backward")
-                HStack {
-                    Button("Undo") { state.undo() }.disabled(state.hasUnapplied || !state.canUndo)
-                    Button("Redo") { state.redo() }.disabled(state.hasUnapplied || !state.canRedo)
+                WorldsGlassChromeGroup(spacing: 8) {
+                    HStack(spacing: 8) {
+                        HStack(spacing: 2) {
+                            Button { state.reorderText(forward: true) } label: { Label("Bring text forward", systemImage: "square.2.layers.3d.top.filled") }
+                                .disabled(!state.canReorderText(forward: true)).accessibilityIdentifier("presentation-element-forward")
+                            Button { state.reorderText(forward: false) } label: { Label("Send text backward", systemImage: "square.2.layers.3d.bottom.filled") }
+                                .disabled(!state.canReorderText(forward: false)).accessibilityIdentifier("presentation-element-backward")
+                        }
+                        .padding(4)
+                        .worldsGlassCapsule()
+                        HStack(spacing: 2) {
+                            Button { state.undo() } label: { Label("Undo", systemImage: "arrow.uturn.backward") }
+                                .disabled(state.hasUnapplied || !state.canUndo)
+                            Button { state.redo() } label: { Label("Redo", systemImage: "arrow.uturn.forward") }
+                                .disabled(state.hasUnapplied || !state.canRedo)
+                        }
+                        .padding(4)
+                        .worldsGlassCapsule()
+                    }
+                    .buttonStyle(PresentationGlassToolStyle())
                 }
-                if state.reloadRequired { Button("Reload saved presentation") { reload = true }.accessibilityIdentifier("presentation-reload") }
+                if state.reloadRequired {
+                    Button("Reload saved presentation") { reload = true }
+                        .worldsGlassButton()
+                        .accessibilityIdentifier("presentation-reload")
+                }
               }
               .frame(maxWidth: .infinity, alignment: .leading)
               .padding()
@@ -487,6 +514,23 @@ struct LocalPresentationEditor: View {
         #if os(macOS)
         .frame(minWidth: 520, minHeight: 480)
         #endif
+    }
+}
+/// An icon button inside a glass capsule: no edge of its own, a soft lens while pressed.
+private struct PresentationGlassToolStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.colorScheme) private var colorScheme
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .labelStyle(.iconOnly)
+            .font(.body.weight(.medium))
+            .frame(minWidth: 34, minHeight: 32)
+            .contentShape(Capsule())
+            .background(Capsule().fill(configuration.isPressed ? WorldsPalette.lens(for: colorScheme) : Color.clear))
+            .foregroundStyle(configuration.role == .destructive ? Color.red : Color.primary)
+            .opacity(isEnabled ? 1 : 0.35)
+            .animation(WorldsMotion.hover, value: configuration.isPressed)
     }
 }
 #endif

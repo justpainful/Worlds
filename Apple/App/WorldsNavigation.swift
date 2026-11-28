@@ -160,7 +160,7 @@ struct CompactFocusToolbarButton: View {
                         Label(model.isRunning ? "Pause" : "Start Focus", systemImage: model.isRunning ? "pause.fill" : "play.fill")
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .worldsGlassButton(prominent: true)
                     .tint(WorldsPalette.accent(for: colorScheme))
                     .accessibilityIdentifier("focus-timer-toggle")
                 }
@@ -194,9 +194,12 @@ struct CreateWorkspaceItemSheet: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dismiss) private var dismiss
     @AppStorage("worlds_pack_study") private var studyPackEnabled: Bool = false
+    @State private var hoveredID: String?
 
     let onSelectFormat: (String) -> Void
     let onBrowseTemplates: () -> Void
+
+    private let groups = ["Knowledge & Docs", "Data & Tables", "Visual Thinking", "Planning", "Creative Studio", "Academic Study"]
 
     private var options: [CreateFormatOption] {
         var items: [CreateFormatOption] = [
@@ -217,56 +220,36 @@ struct CreateWorkspaceItemSheet: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                ForEach(["Knowledge & Docs", "Data & Tables", "Visual Thinking", "Planning", "Creative Studio", "Academic Study"], id: \.self) { group in
-                    let groupItems = options.filter { $0.category == group }
-                    if !groupItems.isEmpty {
-                        Section(group) {
-                            ForEach(groupItems) { item in
-                                Button {
-                                    dismiss()
-                                    onSelectFormat(item.id)
-                                } label: {
-                                    HStack(spacing: 12) {
-                                        Image(systemName: item.icon)
-                                            .font(.title3)
-                                            .foregroundStyle(item.color)
-                                            .frame(width: 34, height: 34)
-                                            .background(item.color.opacity(0.14), in: RoundedRectangle(cornerRadius: 8))
-
-                                        VStack(alignment: .leading, spacing: 2) {
-                                            Text(item.title)
-                                                .font(.body.weight(.semibold))
-                                                .foregroundStyle(WorldsPalette.ink(for: colorScheme))
-                                            Text(item.subtitle)
-                                                .font(.caption)
-                                                .foregroundStyle(.secondary)
-                                        }
-                                        Spacer()
-                                        Image(systemName: "chevron.right")
-                                            .font(.caption2.weight(.semibold))
-                                            .foregroundStyle(.tertiary)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 22) {
+                    ForEach(groups, id: \.self) { group in
+                        let groupItems = options.filter { $0.category == group }
+                        if !groupItems.isEmpty {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text(LocalizedStringKey(group))
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                                    .accessibilityAddTraits(.isHeader)
+                                LazyVGrid(columns: [GridItem(.adaptive(minimum: 220), spacing: 10)], spacing: 10) {
+                                    ForEach(groupItems) { item in
+                                        formatTile(item)
                                     }
-                                    .padding(.vertical, 2)
                                 }
-                                .buttonStyle(.plain)
-                                .accessibilityIdentifier("create-format-\(item.id)")
                             }
                         }
                     }
-                }
 
-                Section {
                     Button {
                         dismiss()
                         onBrowseTemplates()
                     } label: {
                         Label("Start from Workspace Templates…", systemImage: "square.grid.2x2")
                             .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(WorldsPalette.accent(for: colorScheme))
                     }
+                    .worldsGlassButton()
                     .accessibilityIdentifier("create-browse-templates")
                 }
+                .padding(20)
             }
             .navigationTitle("Create New")
             #if os(iOS)
@@ -279,14 +262,59 @@ struct CreateWorkspaceItemSheet: View {
             }
         }
         #if os(macOS)
-        .frame(minWidth: 500, idealWidth: 560, minHeight: 500, idealHeight: 580)
+        .frame(minWidth: 520, idealWidth: 580, minHeight: 500, idealHeight: 600)
         #endif
+        .worldsSheetGlass()
         .accessibilityIdentifier("create-item-sheet")
+    }
+
+    /// A format as a calm card with its colourful tile (content, so no glass).
+    private func formatTile(_ item: CreateFormatOption) -> some View {
+        let hovered = hoveredID == item.id
+        let shape = RoundedRectangle(cornerRadius: 12, style: .continuous)
+        return Button {
+            dismiss()
+            onSelectFormat(item.id)
+        } label: {
+            HStack(alignment: .top, spacing: 12) {
+                WorldsIconTile(item.icon, color: item.color, size: 34)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(LocalizedStringKey(item.title))
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(WorldsPalette.ink(for: colorScheme))
+                        .lineLimit(1)
+                    Text(LocalizedStringKey(item.subtitle))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, minHeight: 64, alignment: .topLeading)
+            .worldsContentCard(cornerRadius: 12)
+            .overlay(shape.fill(Color.primary.opacity(hovered ? 0.04 : 0)).allowsHitTesting(false))
+            .contentShape(shape)
+        }
+        .buttonStyle(.plain)
+        .onHover { inside in
+            withAnimation(WorldsMotion.hover) {
+                if inside {
+                    hoveredID = item.id
+                } else if hoveredID == item.id {
+                    hoveredID = nil
+                }
+            }
+        }
+        .accessibilityIdentifier("create-format-\(item.id)")
     }
 }
 
 // MARK: - Native Contextual Inspector Panel (iPadOS & macOS)
 
+/// The inspector floats on the system glass on 26 (no painted fill); its content
+/// sits in calm cards and its controls on glass.
 struct WorkspaceInspectorPanel: View {
     @Environment(\.colorScheme) private var colorScheme
     let selectedPage: StoredPage?
@@ -298,11 +326,19 @@ struct WorkspaceInspectorPanel: View {
     var onOpenSettings: () -> Void
     var onMoveToTrash: ((String) -> Void)? = nil
 
+    private var focusModeBinding: Binding<String> {
+        Binding(
+            get: { focusModel.mode },
+            set: { newMode in
+                withAnimation(WorldsMotion.selection) { focusModel.selectMode(newMode) }
+            }
+        )
+    }
+
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                // Header
-                HStack {
+            VStack(alignment: .leading, spacing: 20) {
+                HStack(spacing: 8) {
                     Label("Inspector", systemImage: "sidebar.right")
                         .font(.headline)
                         .foregroundStyle(WorldsPalette.ink(for: colorScheme))
@@ -315,16 +351,11 @@ struct WorkspaceInspectorPanel: View {
                     contextInspectorSection
                 }
 
-                Divider()
-
                 // Productivity & Reading Comfort
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Focus & Comfort")
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(.secondary)
-                        .textCase(.uppercase)
+                VStack(alignment: .leading, spacing: 8) {
+                    sectionHeader("Focus & Comfort")
 
-                    VStack(alignment: .leading, spacing: 10) {
+                    VStack(alignment: .leading, spacing: 12) {
                         HStack {
                             Label("Focus Timer", systemImage: focusModel.isRunning ? "timer.circle.fill" : "timer")
                                 .font(.subheadline.weight(.medium))
@@ -332,45 +363,38 @@ struct WorkspaceInspectorPanel: View {
                             Text(focusModel.formattedTime)
                                 .font(.system(.subheadline, design: .monospaced, weight: .bold))
                                 .foregroundStyle(WorldsPalette.accent(for: colorScheme))
+                                .contentTransition(.numericText())
                         }
 
-                        Picker("Mode", selection: Binding(
-                            get: { focusModel.mode },
-                            set: { focusModel.selectMode($0) }
-                        )) {
-                            Text("25m").tag("25m")
-                            Text("50m").tag("50m")
-                            Text("5m").tag("5m")
-                        }
-                        .pickerStyle(.segmented)
+                        WorldsGlassChoice(
+                            selection: focusModeBinding,
+                            options: [
+                                WorldsGlassChoice<String>.Option("25m", symbol: "timer", label: "25m"),
+                                WorldsGlassChoice<String>.Option("50m", symbol: "brain.head.profile", label: "50m"),
+                                WorldsGlassChoice<String>.Option("5m", symbol: "cup.and.saucer", label: "5m")
+                            ],
+                            showsLabels: true
+                        )
+                        .frame(maxWidth: .infinity, alignment: .leading)
 
                         Toggle("Reading Ruler Guide", isOn: $focusModel.readingRulerEnabled)
                             .font(.subheadline)
                     }
                     .padding(12)
-                    .worldsContentCard(cornerRadius: 10)
+                    .worldsContentCard(cornerRadius: 12)
                 }
-
-                Divider()
 
                 // Contextual Quick Links
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Workspace Tools")
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(.secondary)
-                        .textCase(.uppercase)
+                    sectionHeader("Workspace Tools")
 
-                    Button(action: onOpenTemplates) {
-                        Label("Browse Templates", systemImage: "square.grid.2x2")
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                    VStack(spacing: 0) {
+                        toolRow("Browse Templates", symbol: "square.grid.2x2.fill", color: .indigo, action: onOpenTemplates)
+                        Divider()
+                            .padding(.leading, 46)
+                        toolRow("Workspace Settings", symbol: "gearshape.fill", color: .gray, action: onOpenSettings)
                     }
-                    .buttonStyle(.bordered)
-
-                    Button(action: onOpenSettings) {
-                        Label("Workspace Settings", systemImage: "gearshape")
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    .buttonStyle(.bordered)
+                    .worldsContentCard(cornerRadius: 12)
                 }
             }
             .padding(16)
@@ -378,13 +402,36 @@ struct WorkspaceInspectorPanel: View {
         .accessibilityIdentifier("workspace-inspector-panel")
     }
 
+    private func sectionHeader(_ title: LocalizedStringKey) -> some View {
+        Text(title)
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(.secondary)
+            .accessibilityAddTraits(.isHeader)
+    }
+
+    private func toolRow(_ title: LocalizedStringKey, symbol: String, color: Color, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                WorldsIconTile(symbol, color: color, size: 24)
+                Text(title)
+                    .font(.subheadline)
+                    .foregroundStyle(.primary)
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.forward")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 9)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
     @ViewBuilder
     private func pageInspectorSection(_ page: StoredPage) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Document Properties")
-                .font(.caption.weight(.bold))
-                .foregroundStyle(.secondary)
-                .textCase(.uppercase)
+        VStack(alignment: .leading, spacing: 8) {
+            sectionHeader("Document Properties")
 
             VStack(alignment: .leading, spacing: 10) {
                 Text(page.title.isEmpty ? String(localized: "Untitled") : page.title)
@@ -412,7 +459,7 @@ struct WorkspaceInspectorPanel: View {
                 }
             }
             .padding(12)
-            .worldsContentCard(cornerRadius: 10)
+            .worldsContentCard(cornerRadius: 12)
 
             if let onMoveToTrash {
                 Button(role: .destructive) {
@@ -421,17 +468,15 @@ struct WorkspaceInspectorPanel: View {
                     Label("Move to Trash", systemImage: "trash")
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.bordered)
+                .worldsGlassButton()
+                .padding(.top, 4)
             }
         }
     }
 
     private var contextInspectorSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Current Destination")
-                .font(.caption.weight(.bold))
-                .foregroundStyle(.secondary)
-                .textCase(.uppercase)
+        VStack(alignment: .leading, spacing: 8) {
+            sectionHeader("Current Destination")
 
             VStack(alignment: .leading, spacing: 8) {
                 Label(activeDestination.title, systemImage: activeDestination.systemImage)
@@ -448,7 +493,7 @@ struct WorkspaceInspectorPanel: View {
                     .font(.caption)
             }
             .padding(12)
-            .worldsContentCard(cornerRadius: 10)
+            .worldsContentCard(cornerRadius: 12)
         }
     }
 }

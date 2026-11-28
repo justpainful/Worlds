@@ -24,15 +24,17 @@ struct SettingsView: View {
             Form {
                 // Section 1: Appearance & Theme
                 Section("Appearance & Theme") {
-                    Picker("Theme", selection: $themePreference) {
+                    Picker(selection: $themePreference) {
                         Text("System").tag("system")
                         Text("Dark (#0C0C0E)").tag("dark")
                         Text("Light (#FDFDFC)").tag("light")
+                    } label: {
+                        SettingsRowLabel("Theme", symbol: "circle.lefthalf.filled", color: .indigo)
                     }
                     .pickerStyle(.menu)
 
                     HStack {
-                        Text("Accent Color")
+                        SettingsRowLabel("Accent Color", symbol: "paintpalette.fill", color: .blue)
                         Spacer()
                         Circle()
                             .fill(WorldsPalette.accent(for: colorScheme))
@@ -43,7 +45,7 @@ struct SettingsView: View {
                     }
 
                     HStack {
-                        Text("Materials")
+                        SettingsRowLabel("Materials", symbol: "square.stack.3d.up.fill", color: .teal)
                         Spacer()
                         #if os(macOS)
                         Text("Liquid Glass · NSVisualEffectView Vibrancy")
@@ -66,8 +68,10 @@ struct SettingsView: View {
 
                 // Section 2: Packs (Opt-In Domain Features)
                 Section("Packs (Opt-In Features)") {
-                    Toggle("Study Pack (Subjects, Timetable, Assignments, Exams)", isOn: $studyPackEnabled)
-                        .accessibilityIdentifier("toggle-study-pack")
+                    Toggle(isOn: $studyPackEnabled) {
+                        SettingsRowLabel("Study Pack (Subjects, Timetable, Assignments, Exams)", symbol: "graduationcap.fill", color: .orange)
+                    }
+                    .accessibilityIdentifier("toggle-study-pack")
 
                     Text("Tasks, Calendar, Inbox, Goals, and Spreadsheets are always on for everyone. Turn on Study only if you are a student; when off, all academic views are hidden without losing any saved data.")
                         .font(.caption)
@@ -77,13 +81,23 @@ struct SettingsView: View {
                 // Section 3: Workspace & Storage
                 Section("Workspace & Storage") {
                     if let databaseURL {
-                        LabeledContent("Database Location", value: databaseURL.lastPathComponent)
+                        LabeledContent {
+                            Text(databaseURL.lastPathComponent)
+                        } label: {
+                            SettingsRowLabel("Database Location", symbol: "externaldrive.fill", color: .gray)
+                        }
                     }
-                    LabeledContent("Total Pages", value: "\(pageCount)")
+                    LabeledContent {
+                        Text(pageCount, format: .number)
+                    } label: {
+                        SettingsRowLabel("Total Pages", symbol: "doc.on.doc.fill", color: .blue)
+                    }
 
-                    Button("Vacuum Database") {
+                    Button {
                         onVacuumDatabase?()
                         vacuumCompleted = true
+                    } label: {
+                        SettingsRowLabel("Vacuum Database", symbol: "arrow.triangle.2.circlepath", color: .green)
                     }
                     .accessibilityIdentifier("vacuum-database-button")
 
@@ -93,9 +107,11 @@ struct SettingsView: View {
                             .foregroundStyle(.green)
                     }
 
-                    Button("Clear Local Cache", role: .destructive) {
+                    Button(role: .destructive) {
                         onClearCache?()
                         cacheCleared = true
+                    } label: {
+                        SettingsRowLabel("Clear Local Cache", symbol: "trash.fill", color: .red)
                     }
                     .accessibilityIdentifier("clear-cache-button")
 
@@ -112,7 +128,7 @@ struct SettingsView: View {
                     NavigationLink {
                         AIProviderSettingsView()
                     } label: {
-                        Label("AI Providers", systemImage: "sparkles")
+                        SettingsRowLabel("AI Providers", symbol: "sparkles", color: .purple)
                     }
                     .accessibilityIdentifier("open-ai-provider-settings")
                     #endif
@@ -125,7 +141,9 @@ struct SettingsView: View {
                     LabeledContent("Subprocess Execution", value: "Disabled (Sandbox Invariant)")
                     #endif
 
-                    Toggle("Auto-approve read operations", isOn: $autoApproveReads)
+                    Toggle(isOn: $autoApproveReads) {
+                        SettingsRowLabel("Auto-approve read operations", symbol: "checkmark.shield.fill", color: .green)
+                    }
 
                     LabeledContent("Write Authorization Gate", value: "Single-Use Explicit Approval")
                 }
@@ -148,6 +166,8 @@ struct SettingsView: View {
                 }
             }
             .formStyle(.grouped)
+            // No opaque paint behind the groups: the sheet glass (or window vibrancy) shows through.
+            .scrollContentBackground(.hidden)
             .navigationTitle("Settings")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
@@ -156,6 +176,28 @@ struct SettingsView: View {
                 }
             }
         }
+        .worldsSheetGlass()
         .accessibilityIdentifier("settings-view")
+    }
+}
+
+/// A settings row title with its coloured icon tile, as in System Settings.
+struct SettingsRowLabel: View {
+    let title: LocalizedStringKey
+    let symbol: String
+    let color: Color
+
+    init(_ title: LocalizedStringKey, symbol: String, color: Color) {
+        self.title = title
+        self.symbol = symbol
+        self.color = color
+    }
+
+    var body: some View {
+        Label {
+            Text(title)
+        } icon: {
+            WorldsIconTile(symbol, color: color, size: 22)
+        }
     }
 }

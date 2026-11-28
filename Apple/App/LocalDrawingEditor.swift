@@ -23,7 +23,7 @@ struct LocalDrawingEditor: View {
                 } else if let error {
                     VStack(spacing: 12) {
                         Text(error).accessibilityIdentifier("drawing-open-error")
-                        Button("Close") { onClosed(); dismiss() }
+                        Button("Close") { onClosed(); dismiss() }.worldsGlassButton()
                     }.padding()
                 } else { ProgressView("Opening drawing") }
             }.navigationTitle("Drawing")

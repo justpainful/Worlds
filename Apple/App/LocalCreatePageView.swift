@@ -47,6 +47,8 @@ struct LocalCreatePageView: View {
                 if busy { ProgressView("Creating page") }
             }
             .navigationTitle(request.parentID == nil ? "New page" : "New subpage")
+            .formStyle(.grouped)
+            .worldsSheetGlass()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() }.disabled(busy) }
                 ToolbarItem(placement: .confirmationAction) {

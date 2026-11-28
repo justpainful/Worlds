@@ -882,3 +882,13 @@
 "Worlds is under maintenance." = "Worlds is under maintenance.";
 "Worlds is under maintenance. Sharing and syncing are read only for now." = "Worlds is under maintenance. Sharing and syncing are read only for now.";
 "Worlds %@ is ready. Update to keep everything working." = "Worlds %@ is ready. Update to keep everything working.";
+"Good morning" = "Good morning";
+"Good afternoon" = "Good afternoon";
+"Good evening" = "Good evening";
+"Pinned" = "Pinned";
+"Recent" = "Recent";
+"Grid" = "Grid";
+"List" = "List";
+"No results" = "No results";
+"Just now" = "Just now";
+"SWOT Canvas" = "SWOT Canvas";

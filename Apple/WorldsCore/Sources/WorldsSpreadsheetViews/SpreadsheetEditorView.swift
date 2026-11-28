@@ -21,12 +21,24 @@ public struct SpreadsheetEditorView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            formulaBar
-            Divider()
+            // The formula bar and the sheet bar float on glass; the grid stays calm.
+            SpreadsheetGlassGroup(spacing: 8) {
+                formulaBar
+                    .spreadsheetGlassCapsule()
+            }
+            .padding(.horizontal, 12)
+            .padding(.top, 8)
+            .padding(.bottom, 6)
             grid
-            Divider()
-            sheetBar
+            SpreadsheetGlassGroup(spacing: 8) {
+                sheetBar
+                    .spreadsheetGlassCapsule()
+            }
+            .padding(.horizontal, 12)
+            .padding(.top, 6)
+            .padding(.bottom, 8)
         }
+        .background(.background)
         .onChange(of: model.workbook.activeSheetID) { _, _ in if focus == .formula { focus = .grid } }
     }
 
@@ -40,7 +52,7 @@ public struct SpreadsheetEditorView: View {
                 .frame(minWidth: 52)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 5)
-                .background(.quaternary, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+                .background(.quaternary, in: Capsule())
                 .accessibilityLabel(Text("Selected cell"))
                 .accessibilityValue(Text(verbatim: model.selection.key))
             Image(systemName: "function")
@@ -101,8 +113,9 @@ public struct SpreadsheetEditorView: View {
             }
         }
         .environment(\.layoutDirection, .leftToRight)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.leading, 6)
+        .padding(.trailing, 12)
+        .padding(.vertical, 6)
     }
 
     private func commitAndMove(rows: Int, columns: Int) {
@@ -298,6 +311,7 @@ public struct SpreadsheetEditorView: View {
                 }
                 .padding(.vertical, 2)
             }
+            .clipShape(Capsule())
             .accessibilityLabel(Text("Sheets"))
             if model.isEditable {
                 Menu {
@@ -309,13 +323,16 @@ public struct SpreadsheetEditorView: View {
                 } label: {
                     Label("Add", systemImage: "plus")
                 }
+                .menuStyle(.button)
+                .buttonStyle(.borderless)
                 .menuIndicator(.hidden)
                 .fixedSize()
                 .accessibilityIdentifier("spreadsheet-add-menu")
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
+        .padding(.leading, 4)
+        .padding(.trailing, 14)
+        .padding(.vertical, 4)
     }
 }
 

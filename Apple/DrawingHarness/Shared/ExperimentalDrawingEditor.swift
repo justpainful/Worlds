@@ -306,6 +306,7 @@ import WorldsDrawingPencilInput
             drawingCanvas
                 .aspectRatio(model.size.height > 0 ? model.size.width / model.size.height : 16 / 9, contentMode: .fit)
                 .frame(minHeight: 160)
+            drawingToolBar
             ScrollView {
               VStack(alignment: .leading, spacing: 12) {
             (fixtureMode ? Text("Temporary fixture only. Draw strokes inside the marked area. Other shapes and assets are unsupported.") : (editsLocalCopy ? Text("Independent local copy. Draw inside the marked area. Unsupported content cannot be edited here.") : Text("Your Worlds workspace. Draw inside the marked area. Unsupported content cannot be edited here."))).font(.caption)
@@ -363,13 +364,16 @@ import WorldsDrawingPencilInput
                     Button("Discard unsubmitted input", role: .destructive) { confirmDiscard = true }.disabled(model.busy)
                 }
             }
-            HStack(spacing: 12) {
-                Button("Undo") { Task { await model.toggleHistory(redo: false) } }
-                    .disabled(model.busy || model.inputActive || model.recovery != nil || !model.canUndo)
-                    .accessibilityIdentifier("drawing-undo")
-                Button("Redo") { Task { await model.toggleHistory(redo: true) } }
-                    .disabled(model.busy || model.inputActive || model.recovery != nil || !model.canRedo)
-                    .accessibilityIdentifier("drawing-redo")
+            DrawingGlassGroup(spacing: 8) {
+                HStack(spacing: 8) {
+                    Button("Undo", systemImage: "arrow.uturn.backward") { Task { await model.toggleHistory(redo: false) } }
+                        .disabled(model.busy || model.inputActive || model.recovery != nil || !model.canUndo)
+                        .accessibilityIdentifier("drawing-undo")
+                    Button("Redo", systemImage: "arrow.uturn.forward") { Task { await model.toggleHistory(redo: true) } }
+                        .disabled(model.busy || model.inputActive || model.recovery != nil || !model.canRedo)
+                        .accessibilityIdentifier("drawing-redo")
+                }
+                .drawingGlassButton()
             }
             Button("Reopen saved drawing") { Task { await model.reopen() } }
                 .disabled(model.busy || model.recovery == .stroke).accessibilityIdentifier("drawing-reopen")
@@ -390,6 +394,72 @@ import WorldsDrawingPencilInput
                 Button("Close and discard recovery", role: .destructive, action: onClose)
                 Button("Keep editing", role: .cancel) {}
             } message: { editsLocalCopy ? Text("The retained input will be lost. The stroke may already have been saved in the local copy.") : Text("The retained input will be lost. The stroke may already have been saved in your Worlds workspace.") }
+    }
+    /// The tools and colours float on one glass capsule under the canvas, the tool in hand on
+    /// a soft lens. The menus below still list every tool and colour by name.
+    private var drawingToolBar: some View {
+        DrawingGlassGroup(spacing: 8) {
+            ViewThatFits(in: .horizontal) {
+                drawingToolBarContent
+                ScrollView(.horizontal, showsIndicators: false) { drawingToolBarContent }
+                    .clipShape(Capsule())
+            }
+            .drawingGlassCapsule()
+        }
+        .disabled(model.inputBlocked)
+        .frame(maxWidth: .infinity)
+    }
+    private var drawingToolBarContent: some View {
+        HStack(spacing: 8) {
+            HStack(spacing: 2) {
+                ForEach(DrawingToolSymbol.tools, id: \.self) { tool in
+                    let active = model.brush == tool
+                    Button {
+                        withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) { model.brush = tool }
+                    } label: {
+                        DrawingToolSymbol(tool: tool)
+                            .font(.title3)
+                            .frame(minWidth: 34, minHeight: 34)
+                            .background(Color.primary.opacity(active ? 0.12 : 0), in: Capsule())
+                            .contentShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .help(DrawingToolSymbol.title(tool))
+                    .accessibilityLabel(DrawingToolSymbol.barLabel(tool))
+                    .accessibilityIdentifier("drawing-bar-tool-\(tool)")
+                    .accessibilityAddTraits(active ? .isSelected : [])
+                }
+            }
+            Rectangle()
+                .fill(Color.primary.opacity(0.14))
+                .frame(width: 0.5, height: 22)
+                .accessibilityHidden(true)
+            HStack(spacing: 2) {
+                ForEach(DrawingSwatch.all) { swatch in
+                    let selected = model.brushColor == swatch.hex
+                    Button {
+                        model.brushColor = swatch.hex
+                    } label: {
+                        Circle()
+                            .fill(drawingColor(swatch.hex))
+                            .overlay(Circle().strokeBorder(Color.primary.opacity(0.18), lineWidth: 0.5))
+                            .frame(width: 20, height: 20)
+                            .padding(5)
+                            .overlay {
+                                if selected { Circle().strokeBorder(Color.primary.opacity(0.6), lineWidth: 1.5) }
+                            }
+                            .contentShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .help(swatch.label)
+                    .accessibilityLabel(swatch.label)
+                    .accessibilityIdentifier("drawing-bar-color-\(swatch.id)")
+                    .accessibilityAddTraits(selected ? .isSelected : [])
+                }
+            }
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 4)
     }
     private func platformImage(_ image: DrawingPlatformImage) -> Image {
         #if canImport(UIKit)
@@ -457,6 +527,16 @@ struct DrawingToolSymbol: View {
         default: return Color(red: 0.79, green: 0.54, blue: 0.29)
         }
     }
+    /// The quick tool bar's names, distinct from the menu items so each control has one name.
+    static func barLabel(_ tool: String) -> LocalizedStringKey {
+        switch tool {
+        case "ink": return "Ink tool"
+        case "pencil": return "Pencil tool"
+        case "highlighter": return "Highlighter tool"
+        case "laser": return "Laser tool"
+        default: return "Brush tool"
+        }
+    }
     var body: some View {
         Image(systemName: Self.symbol(tool))
             .symbolRenderingMode(.hierarchical)
@@ -490,6 +570,80 @@ func drawingHex(_ color: Color) -> String? {
     #endif
     let channel = { (v: CGFloat) -> Int in min(255, max(0, Int((Double(v) * 255).rounded()))) }
     return String(format: "#%02x%02x%02x", channel(r), channel(g), channel(b))
+}
+
+/// The colours on the quick bar, the same five the colour menu lists.
+struct DrawingSwatch: Identifiable {
+    let id: String
+    let hex: String
+    let label: LocalizedStringKey
+    static var all: [DrawingSwatch] {
+        [
+            DrawingSwatch(id: "black", hex: "#202023", label: "Black color"),
+            DrawingSwatch(id: "red", hex: "#ef3d35", label: "Red color"),
+            DrawingSwatch(id: "blue", hex: "#007aff", label: "Blue color"),
+            DrawingSwatch(id: "green", hex: "#30a46c", label: "Green color"),
+            DrawingSwatch(id: "yellow", hex: "#f5d742", label: "Yellow color"),
+        ]
+    }
+}
+
+// Liquid Glass for the drawing chrome, the same approach as the app's WorldsGlass.swift
+// (which the harness cannot see). On iOS and macOS 26 the system glass is used; older
+// systems get a material with one hairline. The canvas stays calm.
+private struct DrawingGlassSurface: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+    func body(content: Content) -> some View {
+        if reduceTransparency {
+            content
+                .background(colorScheme == .dark ? Color(red: 32 / 255, green: 32 / 255, blue: 35 / 255) : Color(red: 253 / 255, green: 253 / 255, blue: 253 / 255), in: Capsule())
+                .overlay(Capsule().strokeBorder(Color.primary.opacity(0.16), lineWidth: 0.5))
+        } else if #available(iOS 26.0, macOS 26.0, *) {
+            content.glassEffect(.regular.interactive(), in: Capsule())
+        } else {
+            content
+                .background(.regularMaterial, in: Capsule())
+                .overlay(Capsule().strokeBorder(Color.primary.opacity(colorScheme == .dark ? 0.18 : 0.10), lineWidth: 0.5))
+                .shadow(color: .black.opacity(colorScheme == .dark ? 0.28 : 0.10), radius: 14, y: 6)
+        }
+    }
+}
+
+/// Lets glass shapes inside it blend and morph together on 26.
+private struct DrawingGlassGroup<Content: View>: View {
+    let spacing: CGFloat
+    let content: Content
+
+    init(spacing: CGFloat = 8, @ViewBuilder content: () -> Content) {
+        self.spacing = spacing
+        self.content = content()
+    }
+
+    var body: some View {
+        if #available(iOS 26.0, macOS 26.0, *) {
+            GlassEffectContainer(spacing: spacing) { content }
+        } else {
+            content
+        }
+    }
+}
+
+extension View {
+    fileprivate func drawingGlassCapsule() -> some View {
+        modifier(DrawingGlassSurface())
+    }
+
+    /// `.glass` on 26, a bordered capsule before.
+    @ViewBuilder
+    fileprivate func drawingGlassButton() -> some View {
+        if #available(iOS 26.0, macOS 26.0, *) {
+            self.buttonStyle(.glass)
+        } else {
+            self.buttonStyle(.bordered).buttonBorderShape(.capsule)
+        }
+    }
 }
 
 private struct LaserOverlayView: View {

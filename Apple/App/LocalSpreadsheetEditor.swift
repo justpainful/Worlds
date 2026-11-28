@@ -109,16 +109,24 @@ private struct LocalSpreadsheetScreen: View {
     var body: some View {
         SpreadsheetEditorView(model: model)
             .safeAreaInset(edge: .top, spacing: 0) {
+                // A floating glass notice over the sheet; the grid itself stays calm.
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(workspaceSaveNotice(state.copy))
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                    Label {
+                        Text(workspaceSaveNotice(state.copy))
+                    } icon: {
+                        Image(systemName: "info.circle")
+                    }
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
                     if let problem = state.problem { problemText(problem) }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(.bar)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .worldsFloatingGlass(in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .padding(.horizontal, 10)
+                .padding(.top, 6)
+                .padding(.bottom, 4)
             }
             .navigationTitle(title.isEmpty ? String(localized: "Spreadsheet") : title)
             #if os(iOS)

@@ -91,10 +91,21 @@ private struct LocalPageEditorContent: View {
     let onSave: () -> Void
     let onReload: () -> Void
     let onClose: () -> Void
+    @Environment(\.colorScheme) private var colorScheme
     var body: some View {
         ScrollView { VStack(alignment: .leading, spacing: 12) {
-            (editsLocalCopy ? Text("Edits apply only to this local copy. Some content and input methods cannot be edited safely.") : Text("Edits are saved to your Worlds workspace. Some content and input methods cannot be edited safely.")).font(.body)
+            Label {
+                (editsLocalCopy ? Text("Edits apply only to this local copy. Some content and input methods cannot be edited safely.") : Text("Edits are saved to your Worlds workspace. Some content and input methods cannot be edited safely."))
+            } icon: {
+                Image(systemName: editsLocalCopy ? "doc.on.doc" : "externaldrive")
+            }
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+            // The page is content: calm paper with one hairline, never glass.
             NativeEditorView(model: model).frame(maxWidth: .infinity, minHeight: 240)
+                .padding(14)
+                .background(WorldsPalette.paper(for: colorScheme), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(WorldsPalette.subtleBorder(for: colorScheme), lineWidth: 0.5))
             if ProcessInfo.processInfo.arguments.contains("--ui-testing-document-table-column-insert"),
                case .object(let root) = model.document.source, case .array(let blocks)? = root["content"],
                let first = blocks.first, case .object(let table) = first,
@@ -146,8 +157,18 @@ private struct LocalPageEditorContent: View {
                 Text("Fixture title style saved").accessibilityIdentifier("fixture-paragraph-title")
             }
             if let error { Text(error).accessibilityLabel(error).accessibilityIdentifier("local-page-error") }
-            if reloadRequired { Button("Reload saved page", action: onReload).accessibilityIdentifier("local-page-reload") }
-            if saved && !model.dirty { Text("Page saved").accessibilityIdentifier("local-page-saved") }
+            if reloadRequired {
+                Button(action: onReload) { Label("Reload saved page", systemImage: "arrow.clockwise") }
+                    .worldsGlassButton()
+                    .accessibilityIdentifier("local-page-reload")
+            }
+            if saved && !model.dirty {
+                HStack(spacing: 6) {
+                    Image(systemName: "checkmark.circle.fill").foregroundStyle(.green).accessibilityHidden(true)
+                    Text("Page saved").accessibilityIdentifier("local-page-saved")
+                }
+                .font(.footnote.weight(.medium))
+            }
             if ProcessInfo.processInfo.arguments.contains("--ui-testing-link-fixture") {
                 let spans = model.projection.spans
                 let expected = JSONValue.object(["type": .string("link"), "attrs": .object(["href": .string("https://example.com")])])

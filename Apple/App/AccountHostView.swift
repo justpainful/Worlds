@@ -32,13 +32,23 @@ struct AccountHostView: View {
                 } else {
                     Form {
                         Section("Identity service") {
-                            Text("Enter the address of your Worlds identity service. This setting is not a password.")
+                            Label {
+                                Text("Enter the address of your Worlds identity service. This setting is not a password.")
+                            } icon: {
+                                WorldsIconTile("person.badge.key.fill", color: .blue, size: 22)
+                            }
                             TextField("https://identity.example", text: $entry)
                                 .textContentType(.URL)
                             if let error { Text(error).foregroundStyle(.red) }
-                            Button("Continue") { openService() }
+                            HStack {
+                                Spacer()
+                                Button("Continue") { openService() }
+                                    .worldsGlassButton(prominent: true)
+                            }
                         }
                     }
+                    .formStyle(.grouped)
+                    .scrollContentBackground(.hidden)
                 }
             }
             .navigationTitle("Account")
@@ -54,6 +64,7 @@ struct AccountHostView: View {
                 entry = savedServer.isEmpty ? buildDefault : savedServer
             }
         }
+        .worldsSheetGlass()
     }
 
     private var buildDefault: String {

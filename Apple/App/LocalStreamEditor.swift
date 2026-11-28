@@ -74,6 +74,7 @@ struct LocalStreamEditor: View {
                         .accessibilityIdentifier("stream-url-editor")
                     if !state.url.isEmpty && !state.valid { Text("Enter an HTTP or HTTPS link.").foregroundStyle(.secondary) }
                     Button("Save link") { Task { await state.save(onSaved: onSaved) } }
+                        .worldsGlassButton(prominent: true)
                         .disabled(!state.ready || !state.valid || !state.dirty || state.saving)
                         .accessibilityIdentifier("save-stream-link")
                     if state.saving { ProgressView("Saving") }
@@ -81,6 +82,8 @@ struct LocalStreamEditor: View {
                 if let error = state.error { Text(error).foregroundStyle(.secondary).accessibilityIdentifier("stream-editor-error") }
             }
             .navigationTitle("Edit stream link")
+            .formStyle(.grouped)
+            .worldsSheetGlass()
             .toolbar { ToolbarItem(placement: .cancellationAction) {
                 Button("Close") { if state.dirty && !state.saved { confirmDiscard = true } else { dismiss() } }.disabled(state.saving)
             } }

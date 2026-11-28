@@ -76,13 +76,15 @@ struct LocalGalleryImportView: View {
                 else if state.completed { Label("File imported", systemImage: "checkmark.circle") }
                 else {
                     if let fileName = state.fileName { Text(fileName).textSelection(.enabled) }
-                    Button("Choose file") { choosing = true }.disabled(state.busy || !state.ready || state.retryRequired)
-                    Button(state.retryRequired ? "Retry import" : "Import file") { state.start(onSaved: onSaved) }.disabled(state.busy || !state.ready || state.fileName == nil)
-                    if state.busy { ProgressView("Importing"); Button("Cancel import") { state.cancel() } }
+                    Button("Choose file") { choosing = true }.worldsGlassButton().disabled(state.busy || !state.ready || state.retryRequired)
+                    Button(state.retryRequired ? "Retry import" : "Import file") { state.start(onSaved: onSaved) }.worldsGlassButton(prominent: true).disabled(state.busy || !state.ready || state.fileName == nil)
+                    if state.busy { ProgressView("Importing"); Button("Cancel import") { state.cancel() }.worldsGlassButton() }
                 }
                 if let error = state.error { Text(error).foregroundStyle(.secondary).accessibilityIdentifier("gallery-import-message") }
             }
             .navigationTitle("Import to gallery")
+            .formStyle(.grouped)
+            .worldsSheetGlass()
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() }.disabled(state.busy) } }
             .fileImporter(isPresented: $choosing, allowedContentTypes: [.image, .movie, .audio]) { result in
                 if case .success(let url) = result { state.choose(url) }

@@ -46,6 +46,8 @@ struct LocalCreatePresentationView: View {
                 if busy { ProgressView("Creating presentation") }
             }
             .navigationTitle("New presentation")
+            .formStyle(.grouped)
+            .worldsSheetGlass()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Close") { if !submitted && !title.isEmpty { confirmDiscard = true } else { dismiss() } }.disabled(busy) }
                 ToolbarItem(placement: .confirmationAction) {
